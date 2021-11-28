@@ -3,6 +3,8 @@
 This is the source code of Message in a Bottle application, self project of *Advanced Software Engineering* course,
 University of Pisa.
 
+[![CircleCI](https://circleci.com/gh/alessiomatricardi/mib-messages/tree/master.svg?style=shield&circle-token=2bb81af62ab92e84729490c620d76196fd461546)](https://circleci.com/gh/alessiomatricardi/mib-messages/tree/master) [![codecov](https://codecov.io/gh/alessiomatricardi/mib-messages/branch/master/graph/badge.svg?token=FRCTU6BLV1)](https://codecov.io/gh/alessiomatricardi/mib-messages)
+
 ## Team info
 
 - The *squad id* is **<SQUAD_ID>**
