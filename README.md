@@ -1,4 +1,4 @@
-# Message In a Bottle - Messages
+# Message In a Bottle - Messages microservice
 
 This is the source code of Message in a Bottle application, self project of *Advanced Software Engineering* course,
 University of Pisa.
@@ -7,18 +7,19 @@ University of Pisa.
 
 ## Team info
 
-- The *squad id* is **<SQUAD_ID>**
-- The *team leader* is *<TEAM_LEADER>*
+- The *squad id* is **4**
+- The *team leader* is Riccardo Bonini
 
 #### Members
 
-Mark with *bold* the person(s) that has developed this microservice.
-
-|Name and Surname    | Email                         |
-|--------------------|-------------------------------|
-|*Mario Rossi*       |mario.rossi@unipi.it           |
-|Antonio Lupo        |antonio.lupo@unipi.it          |
-|*Susanna Lopez*     |susy.lopez@mit.edu             |
+| Name and Surname      | Email                            |
+| --------------------- | -------------------------------- |
+| Alessio Matricardi    | a.matricardi@studenti.unipi.it   |
+| Davide Fiorini        | d.fiorini@studenti.unipi.it      |
+| Gianmarco Manfredonia | g.manfredonia2@studenti.unipi.it |
+| Marco Parti           | m.parti@studenti.unipi.it        |
+| Riccardo Bonini       | r.bonini2@studenti.unipi.it      |
+| Riccardo Gallo        | r.gallo7@studenti.unipi.it       |
 
 
 ## Instructions
@@ -54,17 +55,6 @@ To show the primary routes of flask application you can issue the following comm
 `flask routes`
 
 The default swagger-ui interface is available on */ui*
-
-#### Executing migrations
-
-If you change something in the models package or you create a new model,
-you have to run these commands to apply the modifications:
-
-`flask db migrate -m '<message>'`
-
-and
-
-`flask db upgrade`
 
 
 #### Application Environments
@@ -109,4 +99,3 @@ In order to know what are the lines of codes which are not covered by the tests,
 ### Future implementations
 
 ---
-
