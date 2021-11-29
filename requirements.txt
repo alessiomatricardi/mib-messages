@@ -38,3 +38,4 @@ email-validator==1.1.1
 importlib-resources==3.3.0
 flask-rabmq==0.0.18
 Pillow==8.4.0
+profanity_filter==1.3.3

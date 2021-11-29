@@ -6,10 +6,10 @@ class Message_Recipient(db.Model):
     # The name of the table that we explicitly set
     __tablename__ = 'Message_Recipient'
 
-    # A list of fields to be serialized TODO da fare
-    SERIALIZE_LIST = ['id', 'email', 'is_active', 'is_anonymous','firstname','lastname','date_of_birth','lottery_points','has_picture','content_filter_enabled']
+    # A list of fields to be serialized
+    SERIALIZE_LIST = ['id', 'recipient_id', 'is_read', 'is_hide']
 
-    id = db.Column(db.Integer, db.ForeignKey('message.id'), nullable=False)
+    id = db.Column(db.Integer, db.ForeignKey('Message.id'), nullable=False)
     recipient_id = db.Column(db.Integer, nullable=False)
     is_read = db.Column(db.Boolean, default=False)
     is_hide = db.Column(db.Boolean, default = False) # message has been cancelled by the recipient

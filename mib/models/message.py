@@ -8,8 +8,8 @@ class Message(db.Model):
     # The name of the table that we explicitly set
     __tablename__ = 'Message'
 
-    # A list of fields to be serialized TODO da fare
-    SERIALIZE_LIST = ['id', 'email', 'is_active', 'is_anonymous','firstname','lastname','date_of_birth','lottery_points','has_picture','content_filter_enabled']
+    # A list of fields to be serialized
+    SERIALIZE_LIST = ['id', 'sender_id', 'content', 'is_sent', 'is_delivered', 'deliver_time', 'image']
 
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -51,5 +51,5 @@ class Message(db.Model):
         }
         return message_obj
 
-    def serialize(self):
+    def serialize(self) -> dict:
         return dict([(k, self.__getattribute__(k)) for k in self.SERIALIZE_LIST])
