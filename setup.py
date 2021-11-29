@@ -9,7 +9,7 @@ _version_re = re.compile(r"__version__\s+=\s+(.*)")
 
 PROJECT = "mib-messages"
 
-with open("mib" + "/__init__.py", "rb") as f:
+with open("mib/__init__.py", "rb") as f:
     version = str(
         ast.literal_eval(_version_re.search(f.read().decode("utf-8")).group(1))
     )
@@ -17,7 +17,7 @@ with open("mib" + "/__init__.py", "rb") as f:
 setup(
     name=PROJECT,
     version=version,
-    author="SQUAD <ID>",
+    author="SQUAD 4",
     license="BSD 3-clause",
     packages=find_packages(),
     include_package_data=True,
