@@ -128,12 +128,19 @@ def get_message(user_id, label, message_id):
         '''
         
 
-    response_object = {
-        'status' : 'success',
-        'message' : 'Message retrieved',
-        'messaggio_da_restituire' : message.serialize()
-    }
-    return jsonify(response_object), 200 
+        response_object = {
+            'status' : 'success',
+            'message' : 'Message retrieved',
+            'messaggio_da_restituire' : message.serialize()
+        }
+        return jsonify(response_object), 200
+    
+    else:
+        response_object = {
+            'status' : 'failure',
+            'message' : 'Wrong label'
+        }
+        return jsonify(response_object), 400
 '''    
     
     # case label is draft

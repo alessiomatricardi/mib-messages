@@ -37,10 +37,10 @@ paths:
         default:
           description: An error occured while retrieving the list of users
 
+
   /messages/{user_id}/{label}/{message_id}:
     get:
-      tags:
-        - Messages
+      tags: [ Messages ]
       description: Get message details
       operationId: mib.resources.messages.get_message
       parameters:
@@ -67,6 +67,8 @@ paths:
       responses:
         200:
           description: Return message
+        400:
+          description: Bad request
         403:
           description: Forbidden
         404:
