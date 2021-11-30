@@ -7,7 +7,7 @@ class Report(db.Model):
     __tablename__ = 'Report'
 
     # A list of fields to be serialized TODO da fare
-    SERIALIZE_LIST = ['id', 'email', 'is_active', 'is_anonymous','firstname','lastname','date_of_birth','lottery_points','has_picture','content_filter_enabled']
+    SERIALIZE_LIST = ['message_id', 'reporting_user_id', 'report_time']
 
     reporting_user_id = db.Column(db.Integer, nullable=False)
     message_id = db.Column(db.Integer, db.ForeignKey('Message.id'), nullable=False)

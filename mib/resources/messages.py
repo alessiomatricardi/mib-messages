@@ -1,8 +1,10 @@
 from mib.dao.message_manager import MessageManager
+from mib.dao.report_manager import ReportManager
 from flask import jsonify
 import requests
 from mib import app
 from mib.emails import send_email
+from mib.content_filter import ContentFilter
 
 
 USERS_ENDPOINT = app.config['USERS_MS_URL']
@@ -86,7 +88,7 @@ def get_message(user_id, label, message_id):
             }
             return jsonify(response_object), 404
 
-        # checking if the current_user is into recipients of the message
+        # check if the user_id is into recipients of the message
         message_recipient = MessageManager.retrieve_message_recipient(message_id, user_id)
 
         if not message_recipient:
@@ -126,176 +128,123 @@ def get_message(user_id, label, message_id):
         else:
             blocked = True
         '''
+    
+        message_json = message.serialize()
+
+        # censure the message if the user has content filter enabled
+
+        # TODO get info from the user
+        # GET /users/<id>/content_filter
+        sender = None
+
+        try:
+            response = requests.get("%s/users/%s/list/%s" % (USERS_ENDPOINT, str(user_id), str(user_id)),
+                                    timeout=REQUESTS_TIMEOUT_SECONDS)
+            
+            if response.status_code != 200:
+                return response.json(), response.status_code
+            
+            sender = response.json()['user']
+
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+
+            response_object = {
+                'status': 'failure',
+                'message': 'Error in retrieving user',
+            }
+            return jsonify(response_object), 500
         
+        message_json = message.serialize()
+
+        # censure the message if the user has content filter enabled
+        if sender['content_filter_enabled']:
+            censored_content = ContentFilter.censure_content(message.content)
+            message_json['content'] = censored_content
+        
+        # check if the user already reported this message
+        reported = ReportManager.is_message_reported(message_id, user_id)
+        message_json['reported'] = reported
 
         response_object = {
             'status' : 'success',
             'message' : 'Message retrieved',
-            'messaggio_da_restituire' : message.serialize()
+            'messaggio_da_restituire' : message_json
         }
         return jsonify(response_object), 200
     
-    else:
-        response_object = {
-            'status' : 'failure',
-            'message' : 'Wrong label'
-        }
-        return jsonify(response_object), 400
-'''    
-    
-    # case label is draft
-    elif label == 'draft':
+    elif label == 'drafts':
 
-        msg_logic = MessageLogic()
-        draft_logic = DraftLogic()
+        # retrieving the message, if exists
+        message = MessageManager.retrieve_message_by_id(label, message_id)
 
-        # rendering the draft detail
-        if request.method == 'GET':
-            form = MessageForm()
+        if not message:
+            response_object = {
+                'status' : 'failure',
+                'message' : 'Message not found'
+            }
+            return jsonify(response_object), 404
+        
+        # check if the user_id is the sender of the message
+        if message.sender_id != user_id:
+            response_object = {
+                'status' : 'failure',
+                'message' : 'Forbidden: user is not the sender of this message'
+            }
+            return jsonify(response_object), 403
+        
+        recipients = MessageManager.retrieve_message_recipients(message_id)
 
-            form.recipients.choices = msg_logic.get_list_of_recipients_email(current_user.id)
+        # API gateway will use this field to render the form
+        recipient_emails = ['a.matricardi@studenti.unipi.it']
 
-            # retrieving the message, if exists
-            detailed_message = draft_logic.retrieve_draft(id)
-            if not detailed_message:
-                abort(404)
+        # checks that already saved recipients are still available (they could have become inactive or blocked/blocking user)
+        for recipient in recipients:
+            # TODO CHIEDI A USER SE UTENTE DISPONIBILE
+            # TODO CHIEDI A BLACKLIST SE UTENTE BLOCCATO/BLOCCANTE
+            user = dict()
+            user['is_active'] = True
+            user['email'] = 'prova@example.com'
 
-            detailed_message = detailed_message[0]
-
-            recipients = []
-            # recipients_id = []
-            recipients_emails = []
-
-            # checking if the current user is the sender, then retrieving recipients of draft
-            if detailed_message.sender_id == current_user.id:
-                recipients = draft_logic.retrieve_current_draft_recipients(id)
+            if not user['is_active']: #'''or user is in blacklist'''
+                # remove user from recipients
+                MessageManager.remove_message_recipient(message_id, user_id)
             else:
-                abort(404)
-
-            # checking that already saved recipients are still available (they could have become inactive or blocked/blocking user)
-            for recipient in recipients:
-                blacklist_istance = draft_logic.recipient_blacklist_status(current_user.id,recipient.id)
-                if len(blacklist_istance) > 0 or not recipient.is_active:
-                    
-                    # the user is no longer available to receive messages from current_user either being inactive or being blocked/blocking
-                    flash("The user " + str(recipient.email) + " is no longer avaiable")
-                    
-                    if not draft_logic.remove_unavailable_recipient(detailed_message.id,recipient.id):
-                        abort(500)
-                else:
-                    # the saved recipient is still available
-                    recipients_emails.append(recipient.email)
-
-            # defining format of datetime in order to insert it in html form
-            deliver_time = detailed_message.deliver_time.strftime("%Y-%m-%dT%H:%M")
-
-            form.content.data = detailed_message.content
-
-            # returning the draft html page
-            return render_template("modify_draft.html", form = form, recipients_emails = recipients_emails, deliver_time = deliver_time, attachment = detailed_message.image, message_id = detailed_message.id)
-
-        # else = Drafts POST method: deleting draft or submitting modification/send request
-        elif request.method == 'POST':
-
-            form = request.form
-
-            # retrieving the draft to send, modifiy or delete it
-            detailed_message = draft_logic.retrieve_draft(id)
-            # checks that the draft exists
-            if not detailed_message:
-                abort(404)
-
-            detailed_message = detailed_message[0]
-
-            recipients = []
-            recipients_id = []
-            recipients_emails = []
-
-            # checking if the current user is the sender of draft
-            if not detailed_message.sender_id == current_user.id:
-                abort(404)
-
-            # delete draft from db, eventual image in filesystem and all message_recipients instances
-            if form['submit'] == 'Delete draft':
-
-                if not draft_logic.delete_draft(detailed_message):
-                    abort(500)
-
-                return render_template("index.html")
-
-            # Now form['submit'] == 'Send bottle' or 'Save Draft'
-
-            # checking if there's new recipients for the draft
-            for recipient_email in form.getlist('recipients'):
-
-                # retrieving id of recipient
-                recipient_id = msg_logic.email_to_id(recipient_email)
-
-                # add recipient to draft if not already stored
-                if not draft_logic.update_recipients(detailed_message,recipient_id):
-                    abort(500)
-
-            # update content of message: if the content is not changed, it'll store the same value
-            if not draft_logic.update_content(detailed_message,form):
-                abort(500)
-            # update the deliver time for the draft
-            if not draft_logic.update_deliver_time(detailed_message,form):
-                abort(500)
-
-            # checking if there is a new attached image in the form
-            if request.files and request.files['attach_image'].filename != '':
-
-                # checking if there's a previous attached image, if so we delete it
-                if detailed_message.image != '':
-
-                    if not draft_logic.delete_previously_attached_image(detailed_message):
-                        abort(500)
-
-                # retrieving newly attached image
-                file = request.files['attach_image']
-
-                # proper controls on the given file
-                if msg_logic.validate_file(file):
-
-                    if not draft_logic.update_attached_image(detailed_message,file):
-                        abort(500)
-
-                else:
-                    # control on filename fails
-                    flash('Insert an image with extention: .png , .jpg, .jpeg, .gif')
-                    return redirect('/messages/draft/' + str(detailed_message.id))
-
-            # the draft is sent and its is_sent attribute is set to 1, from now on it's no longer possible to modify it
-            # in order to stop it, it'll be necessary to spend lottery points
-            if form['submit'] == 'Send bottle':
-                if not draft_logic.send_draft(detailed_message):
-                    abort(500)
-
-            return render_template("index.html")
+                recipient_emails.append(user['email'])
 
 
-    else: # case label is pending or delivered
+        message_json = message.serialize()
+        message_json['recipients'] = recipient_emails
 
-        # checks that message exists
-        if label == 'pending':
-            detailed_message = bottlebox_logic.retrieve_pending_message(id)
-        else:
-            detailed_message = bottlebox_logic.retrieve_delivered_message(id)
+        response_object = {
+            'status' : 'success',
+            'message' : 'Message retrieved',
+            'content' : message_json
+        }
+        return jsonify(response_object), 200
 
-        if not detailed_message:
-            abort(404)
+    elif label in ['pending', 'delivered']:
 
-        detailed_message = detailed_message[0]
+        # retrieving the message, if exists
+        message = MessageManager.retrieve_message_by_id(label, message_id)
 
-        # checking if the current user is the sender
-        if detailed_message.sender_id == current_user.id:
-            recipients = bottlebox_logic.retrieve_recipients(id)
-        else:
-            abort(404)
+        if not message:
+            response_object = {
+                'status' : 'failure',
+                'message' : 'Message not found'
+            }
+            return jsonify(response_object), 404
+        
+        # check if the user_id is the sender of the message
+        if message.sender_id != user_id:
+            response_object = {
+                'status' : 'failure',
+                'message' : 'Forbidden: user is not the sender of this message'
+            }
+            return jsonify(response_object), 403
 
-        other_id = None
-
+        # TODO INVESTIGATE
         # checks if a recipient has blocked the current_user or has been blocked
+        '''
         for i in range(len(recipients)):
             other_id = recipients[i].id
 
@@ -306,25 +255,46 @@ def get_message(user_id, label, message_id):
                 blocked_info.append([recipients[i], False])
             else:
                 blocked_info.append([recipients[i], True])
+        '''
 
-    # retrieving sender info from db
-    sender = User.query.where(User.id == detailed_message.sender_id)[0]
-    sender_name = sender.firstname + ' ' + sender.lastname
-    sender_name = bottlebox_logic.retrieve_sender_info(detailed_message)
+        # retrieve sender info from db
 
-    reportForm = ReportForm(message_id = id)
-    hideForm = HideForm(message_id = id)
+        sender = None
 
-    filter = ContentFilterLogic()
+        try:
+            response = requests.get("%s/users/%s/list/%s" % (USERS_ENDPOINT, str(user_id), str(user_id)),
+                                    timeout=REQUESTS_TIMEOUT_SECONDS)
+            
+            if response.status_code != 200:
+                return response.json(), response.status_code
+            
+            sender = response.json()['user']
 
-    if filter.filter_enabled(current_user.id):
-        censored_content = filter.check_message_content(detailed_message.content)
-        detailed_message.content = censored_content
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
 
-    # has the user already reported this message?
-    query = db.session.query(Report).filter(Report.message_id == detailed_message.id, Report.reporting_user_id == current_user.id).first()
-    reported = query is not None
+            response_object = {
+                'status': 'failure',
+                'message': 'Error in retrieving user',
+            }
+            return jsonify(response_object), 500
+        
+        message_json = message.serialize()
 
-    return render_template('message_detail.html', hideForm = hideForm, reportForm = reportForm, message = detailed_message, sender_name = sende
-    
-'''
+        # censure the message if the user has content filter enabled
+        if sender['content_filter_enabled']:
+            censored_content = ContentFilter.censure_content(message.content)
+            message_json['content'] = censored_content
+
+        response_object = {
+            'status' : 'success',
+            'message' : 'Message retrieved',
+            'content' : message_json
+        }
+        return jsonify(response_object), 200 
+
+    else:
+        response_object = {
+            'status' : 'failure',
+            'message' : 'Wrong label'
+        }
+        return jsonify(response_object), 400 

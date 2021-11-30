@@ -1,8 +1,6 @@
 import smtplib, ssl
 from unittest import result
 
-from flask.signals import _FakeSignal
-
 port = 587  # For starttls
 smtp_server = "smtp.gmail.com"
 

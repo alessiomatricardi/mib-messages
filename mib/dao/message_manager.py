@@ -107,6 +107,8 @@ class MessageManager(Manager):
         Manager.check_none(label=label)
         Manager.check_none(message_id=message_id)
 
+        message = None
+
         if label in ['received', 'delivered']:
             message = Message.query.filter(
                 Message.id == message_id, 
@@ -119,7 +121,7 @@ class MessageManager(Manager):
                 Message.is_sent == True, 
                 Message.is_delivered == False
             ).first()
-        elif label == 'draft':
+        elif label == 'drafts':
             message = Message.query.filter(
                 Message.id == message_id, 
                 Message.is_sent == False, 
@@ -148,5 +150,16 @@ class MessageManager(Manager):
 
         # message has been read by recipient 
         message_recipient.is_read = True
-        Manager.update(message_recipient)
+        Manager.update(message_recipient=message_recipient)
+    
+    @staticmethod
+    def remove_message_recipient(message_id, user_id):
+
+        Manager.check_none(message_id=message_id)
+        Manager.check_none(user_id=user_id)
+
+        message_recipient = MessageManager.retrieve_message_recipient(message_id, user_id)
+        
+        Manager.delete(message_recipient)
+
         
