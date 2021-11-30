@@ -93,10 +93,60 @@ class MessageManager(Manager):
 
             return messages
 
-
+    @staticmethod
     def retrieve_message_recipients(message_id) -> List[int]:
         Manager.check_none(message_id=message_id)
 
         recipients = Message_Recipient.query.filter(Message_Recipient.id == message_id).all()
 
         return [recipient.recipient_id for recipient in recipients]
+    
+    @staticmethod
+    def retrieve_message_by_id(label, message_id) -> Message:
+
+        Manager.check_none(label=label)
+        Manager.check_none(message_id=message_id)
+
+        if label in ['received', 'delivered']:
+            message = Message.query.filter(
+                Message.id == message_id, 
+                Message.is_sent == True, 
+                Message.is_delivered == True
+            ).first()
+        elif label == 'pending':
+            message = Message.query.filter(
+                Message.id == message_id,
+                Message.is_sent == True, 
+                Message.is_delivered == False
+            ).first()
+        elif label == 'draft':
+            message = Message.query.filter(
+                Message.id == message_id, 
+                Message.is_sent == False, 
+                Message.is_delivered == False
+            ).first()
+        
+        return message
+    
+    @staticmethod
+    def retrieve_message_recipient(message_id, user_id) -> Message_Recipient:
+        
+        Manager.check_none(message_id=message_id)
+        Manager.check_none(user_id=user_id)
+
+        recipient = Message_Recipient.query.filter(
+            Message_Recipient.id == message_id,
+            Message_Recipient.recipient_id == user_id
+        ).first()
+
+        return recipient
+    
+    @staticmethod
+    def set_message_as_read(message_recipient):
+        
+        Manager.check_none(message_recipient=message_recipient)
+
+        # message has been read by recipient 
+        message_recipient.is_read = True
+        Manager.update(message_recipient)
+        

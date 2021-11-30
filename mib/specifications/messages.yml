@@ -36,3 +36,40 @@ paths:
           description: User not found
         default:
           description: An error occured while retrieving the list of users
+
+  /messages/{user_id}/{label}/{message_id}:
+    get:
+      tags:
+        - Messages
+      description: Get message details
+      operationId: mib.resources.messages.get_message
+      parameters:
+        - name: user_id
+          description: User Unique ID
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: label
+          description: Message type
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: message_id
+          description: Message id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        200:
+          description: Return message
+        403:
+          description: Forbidden
+        404:
+          description: Message not found
+        default:
+          description: An error occured while retrieving the message
