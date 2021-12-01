@@ -5,9 +5,11 @@ import requests
 from mib import app
 from mib.emails import send_email
 from mib.content_filter import ContentFilter
+import json
 
 
 USERS_ENDPOINT = app.config['USERS_MS_URL']
+BLACKLIST_ENDPOINT = app.config['BLACKLIST_MS_URL']
 REQUESTS_TIMEOUT_SECONDS = app.config['REQUESTS_TIMEOUT_SECONDS']
 
 
@@ -15,16 +17,18 @@ def get_bottlebox(user_id, label):
 
     # check if the user_id exists
     try:
-        response = requests.get("%s/users/%s/list/%s" % (USERS_ENDPOINT, str(user_id), str(user_id)),
-                                timeout=REQUESTS_TIMEOUT_SECONDS)
-        
+        data = {'requester_id': user_id}
+        response = requests.get("%s/users/%s" % (USERS_ENDPOINT, str(user_id)),
+                                timeout=REQUESTS_TIMEOUT_SECONDS,
+                                json=data)
+
         if response.status_code != 200:
             response_object = {
                 'status': 'failure',
                 'message': 'Error in retrieving user',
             }
             return response.json(), response.status_code
-            
+
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
         response_object = {
             'status': 'failure',
@@ -73,12 +77,12 @@ def get_message(user_id, label, message_id):
     # TODO L'API GATEWAY DEVE CONTROLLARE SE ID E` INTERO
     # TODO API GATEWAY
     #if label not in ['received', 'delivered', 'pending', 'drafts']:
-        #abort(404)
+    #abort(404)
     #if label != 'draft' and request.method == 'POST':
-        #abort(404)
+    #abort(404)
 
     if label == 'received':
-        
+
         message = MessageManager.retrieve_message_by_id(label, message_id)
 
         if not message:
@@ -102,19 +106,19 @@ def get_message(user_id, label, message_id):
         if not message_recipient.is_read:
 
             MessageManager.set_message_as_read(message_recipient)
-            
+
             # send email to the send
             sender_id = message.sender_id
 
             # TODO interazione con user per ricavare il nome dell'utente
             email_message = "Subject: Message notification\n\nThe message you sent to " + "PEPPINO" + " has been read."
-            
+
             # TODO interazione con user per ricavare l'email dell'utente
             #email = db.session.query(User).filter(User.id == message_sender_id).first().email
             email = 'a.matricardi@studenti.unipi.it'
 
             send_email(email, email_message)
-        
+
         # TODO INTERAZIONE CON BLACKLIST
         '''
         other_id = detailed_message.sender_id
@@ -128,7 +132,7 @@ def get_message(user_id, label, message_id):
         else:
             blocked = True
         '''
-    
+
         message_json = message.serialize()
 
         # censure the message if the user has content filter enabled
@@ -138,12 +142,14 @@ def get_message(user_id, label, message_id):
         sender = None
 
         try:
-            response = requests.get("%s/users/%s/list/%s" % (USERS_ENDPOINT, str(user_id), str(user_id)),
-                                    timeout=REQUESTS_TIMEOUT_SECONDS)
-            
+            data = {'requester_id': user_id}
+            response = requests.get("%s/users/%s" % (USERS_ENDPOINT, str(user_id)),
+                                    timeout=REQUESTS_TIMEOUT_SECONDS,
+                                    json=data)
+
             if response.status_code != 200:
                 return response.json(), response.status_code
-            
+
             sender = response.json()['user']
 
         except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
@@ -153,14 +159,14 @@ def get_message(user_id, label, message_id):
                 'message': 'Error in retrieving user',
             }
             return jsonify(response_object), 500
-        
+
         message_json = message.serialize()
 
         # censure the message if the user has content filter enabled
         if sender['content_filter_enabled']:
             censored_content = ContentFilter.censure_content(message.content)
             message_json['content'] = censored_content
-        
+
         # check if the user already reported this message
         reported = ReportManager.is_message_reported(message_id, user_id)
         message_json['reported'] = reported
@@ -171,7 +177,7 @@ def get_message(user_id, label, message_id):
             'messaggio_da_restituire' : message_json
         }
         return jsonify(response_object), 200
-    
+
     elif label == 'drafts':
 
         # retrieving the message, if exists
@@ -183,7 +189,7 @@ def get_message(user_id, label, message_id):
                 'message' : 'Message not found'
             }
             return jsonify(response_object), 404
-        
+
         # check if the user_id is the sender of the message
         if message.sender_id != user_id:
             response_object = {
@@ -191,7 +197,7 @@ def get_message(user_id, label, message_id):
                 'message' : 'Forbidden: user is not the sender of this message'
             }
             return jsonify(response_object), 403
-        
+
         recipients = MessageManager.retrieve_message_recipients(message_id)
 
         # API gateway will use this field to render the form
@@ -233,7 +239,7 @@ def get_message(user_id, label, message_id):
                 'message' : 'Message not found'
             }
             return jsonify(response_object), 404
-        
+
         # check if the user_id is the sender of the message
         if message.sender_id != user_id:
             response_object = {
@@ -262,12 +268,15 @@ def get_message(user_id, label, message_id):
         sender = None
 
         try:
-            response = requests.get("%s/users/%s/list/%s" % (USERS_ENDPOINT, str(user_id), str(user_id)),
-                                    timeout=REQUESTS_TIMEOUT_SECONDS)
-            
+            data = {'requester_id': user_id}
+            response = requests.get("%s/users/%s" %
+                                    (USERS_ENDPOINT, str(user_id)),
+                                    timeout=REQUESTS_TIMEOUT_SECONDS,
+                                    json=data)
+
             if response.status_code != 200:
                 return response.json(), response.status_code
-            
+
             sender = response.json()['user']
 
         except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
@@ -277,7 +286,7 @@ def get_message(user_id, label, message_id):
                 'message': 'Error in retrieving user',
             }
             return jsonify(response_object), 500
-        
+
         message_json = message.serialize()
 
         # censure the message if the user has content filter enabled
@@ -290,11 +299,11 @@ def get_message(user_id, label, message_id):
             'message' : 'Message retrieved',
             'content' : message_json
         }
-        return jsonify(response_object), 200 
+        return jsonify(response_object), 200
 
     else:
         response_object = {
             'status' : 'failure',
             'message' : 'Wrong label'
         }
-        return jsonify(response_object), 400 
+        return jsonify(response_object), 400
