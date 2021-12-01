@@ -1,3 +1,4 @@
+import json
 from mib.dao.message_manager import MessageManager
 from mib.dao.report_manager import ReportManager
 from flask import jsonify
@@ -70,8 +71,9 @@ def get_bottlebox(user_id, label):
 # Headers: .... Authrization: token = user
 def get_message(user_id, label, message_id):
 
+
     # TODO L'API GATEWAY DEVE CONTROLLARE SE ID E` INTERO
-    # TODO API GATEWAY
+    # TODO API GATEWAY deve:
     #if label not in ['received', 'delivered', 'pending', 'drafts']:
         #abort(404)
     #if label != 'draft' and request.method == 'POST':
@@ -262,9 +264,13 @@ def get_message(user_id, label, message_id):
         sender = None
 
         try:
-            response = requests.get("%s/users/%s/list/%s" % (USERS_ENDPOINT, str(user_id), str(user_id)),
-                                    timeout=REQUESTS_TIMEOUT_SECONDS)
+            #response = requests.get("%s/users/%s/list/%s" % (USERS_ENDPOINT, str(user_id), str(user_id)),
+            #                        timeout=REQUESTS_TIMEOUT_SECONDS)
             
+            response = requests.get("%s/users/%s" % (USERS_ENDPOINT, str(user_id)), json={'requester_id': user_id},
+                                    timeout=REQUESTS_TIMEOUT_SECONDS)
+
+
             if response.status_code != 200:
                 return response.json(), response.status_code
             
@@ -298,3 +304,45 @@ def get_message(user_id, label, message_id):
             'message' : 'Wrong label'
         }
         return jsonify(response_object), 400 
+
+# POST /hide/<message_id>/<user_id>
+def hide_message(message_id, user_id):
+
+    # TODO L'API gateway valida il form e passa i parametri user_id e message_id (SEE CODE BELOW)
+    """
+    form = HideForm()
+
+    if not form.validate_on_submit():
+        abort(400)
+
+    message_id = 0
+    try:
+        # retrieve the message id from the form
+        message_id = int(form.message_id.data)
+    except:
+        abort(400)
+    """
+
+    recipient = MessageManager.retrieve_message_recipient(message_id, user_id)
+
+    if recipient is None: 
+        response_object = {
+            'status' : 'failure',
+            'message' : 'Forbidden: user is not a recipient of this message'
+        }
+        return jsonify(response_object), 403
+
+    if recipient.is_hide is not False:
+        response_object = {
+            'status' : 'failure',
+            'message' : 'Forbidden: user not allowed'
+        }
+        return jsonify(response_object), 403
+
+    MessageManager.hide_message(recipient)
+
+    response_object = {
+        'status' : 'success',
+        'message' : 'Message successfully deleted'
+    }
+    return jsonify(response_object), 200

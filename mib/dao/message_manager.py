@@ -162,4 +162,11 @@ class MessageManager(Manager):
         
         Manager.delete(message_recipient)
 
-        
+    @staticmethod
+    def hide_message(recipient):
+
+        Manager.check_none(recipient=recipient)
+
+        recipient.is_hide = True     
+
+        Manager.update(recipient=recipient)
