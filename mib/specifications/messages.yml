@@ -8,19 +8,18 @@ servers:
   - url: /
 
 paths:
-  /bottlebox/{user_id}/{label}:
+  /bottlebox/{label}:
     get:
       tags: [ Messages ]
       description: Get the list of the requested messages by the user 
       operationId: mib.resources.messages.get_bottlebox
-      parameters:
-        - name: user_id
-          description: User Unique ID
-          in: path
-          required: true
-          schema:
-            type: integer
-            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequesterID'
+      parameters:  
         - name: label
           description: Messages type
           in: path
@@ -37,25 +36,12 @@ paths:
         default:
           description: An error occured while retrieving the list of users
 
-  /messages/{user_id}/{label}/{message_id}:
+  /messages/received/{message_id}:
     get:
       tags: [ Messages ]
-      description: Get message details
-      operationId: mib.resources.messages.get_message
+      description: Get details of a received message
+      operationId: mib.resources.messages.get_received_message
       parameters:
-        - name: user_id
-          description: User Unique ID
-          in: path
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - name: label
-          description: Message type
-          in: path
-          required: true
-          schema:
-            type: string
         - name: message_id
           description: Message id
           in: path
@@ -63,6 +49,12 @@ paths:
           schema:
             type: integer
             format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequesterID'
       responses:
         200:
           description: Return message
@@ -74,12 +66,12 @@ paths:
           description: Message not found
         default:
           description: An error occured while retrieving the message
-    
-  /hide/{message_id}/{user_id}:
+  
+  /messages/drafts/{message_id}:
     get:
       tags: [ Messages ]
-      description: Get message details
-      operationId: mib.resources.messages.hide_message
+      description: Get details of a draft message
+      operationId: mib.resources.messages.get_draft_message
       parameters:
         - name: message_id
           description: Message id
@@ -88,17 +80,131 @@ paths:
           schema:
             type: integer
             format: int64
-        - name: user_id
-          description: User Unique ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequesterID'
+      responses:
+        200:
+          description: Return message
+        400:
+          description: Bad request
+        403:
+          description: Forbidden
+        404:
+          description: Message not found
+        default:
+          description: An error occured while retrieving the message
+   
+  /messages/pending/{message_id}:
+    get:
+      tags: [ Messages ]
+      description: Get details of a pending message
+      operationId: mib.resources.messages.get_pending_message
+      parameters:
+        - name: message_id
+          description: Message id
           in: path
           required: true
           schema:
             type: integer
             format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequesterID'
       responses:
         200:
           description: Return message
+        400:
+          description: Bad request
+        403:
+          description: Forbidden
+        404:
+          description: Message not found
+        default:
+          description: An error occured while retrieving the message
+   
+  /messages/delivered/{message_id}:
+    get:
+      tags: [ Messages ]
+      description: Get details of a delivered message
+      operationId: mib.resources.messages.get_delivered_message
+      parameters:
+        - name: message_id
+          description: Message id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequesterID'
+      responses:
+        200:
+          description: Return message
+        400:
+          description: Bad request
+        403:
+          description: Forbidden
+        404:
+          description: Message not found
+        default:
+          description: An error occured while retrieving the message
+
+  /hide:
+    delete:
+      tags: [ Messages ]
+      description: Get message details
+      operationId: mib.resources.messages.hide_message
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MessageRequestBody'
+      responses:
+        200:
+          description: Delete message for the user recipient
         403:
           description: Forbidden
         default:
           description: An error occured while retrieving the message
+
+components:
+  schemas:
+    RequesterID:
+      required:
+        - requester_id
+      type: object
+      properties:
+        requester_id:
+          type: integer
+          format: int64
+          description: user ID
+          example: 1
+
+    MessageRequestBody:
+      required:
+        - requester_id
+        - message_id
+      type: object
+      properties:
+        requester_id:
+          type: integer
+          format: int64
+          description: user ID
+          example: 1
+        message_id:
+          type: integer
+          format: int64
+          description: message ID
+          example: 12

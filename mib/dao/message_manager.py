@@ -22,13 +22,6 @@ class MessageManager(Manager):
                 Message.is_delivered == False
             ).all()
             
-            # TODO aggiungere Spacy/profanity filter come dipendenza
-            # if the content filter is active, all the messages will be displayed censored
-            # if filter.filter_enabled(user.id):
-            if False:
-                for message in msg:
-                   censored_content = filter.check_message_content(message.content)
-                   message.content = censored_content 
             return messages
         
         elif label_ == "received": #received
@@ -41,13 +34,6 @@ class MessageManager(Manager):
                     Message_Recipient.is_hide == False
                 ).all()
 
-            # TODO aggiungere Spacy/profanity filter come dipendenza
-            # if the content filter is active, all the messages will be displayed censored
-            # if filter.filter_enabled(user.id):
-            if False:
-                for message in to_return:
-                    censored_content = filter.check_message_content(message.content)
-                    message.content = censored_content
             
             '''
             messages has the structure below:
@@ -67,14 +53,6 @@ class MessageManager(Manager):
                 Message.is_delivered == True
             ).all()
             
-            # TODO aggiungere Spacy/profanity filter come dipendenza
-            # if the content filter is active, all the messages will be displayed censored
-            # if filter.filter_enabled(user.id):
-            if False:
-                for message in msg:
-                   censored_content = filter.check_message_content(message.content)
-                   message.content = censored_content
-
             return messages
 
         elif label_ == "drafts": #drafts
@@ -82,14 +60,6 @@ class MessageManager(Manager):
                 Message.sender_id == user_id,
                 Message.is_sent == False
             ).all()
-
-            # TODO aggiungere Spacy/profanity filter come dipendenza
-            # if the content filter is active, all the messages will be displayed censored
-            # if filter.filter_enabled(user.id):
-            if False:
-                for message in msg:
-                   censored_content = filter.check_message_content(message.content)
-                   message.content = censored_content
 
             return messages
 
@@ -163,10 +133,9 @@ class MessageManager(Manager):
         Manager.delete(message_recipient)
 
     @staticmethod
-    def hide_message(recipient):
+    def hide_message(message_recipient):
 
-        Manager.check_none(recipient=recipient)
+        Manager.check_none(message_recipient=message_recipient)
 
-        recipient.is_hide = True     
-
-        Manager.update(recipient=recipient)
+        message_recipient.is_hide = True     
+        Manager.update(message_recipient=message_recipient)
