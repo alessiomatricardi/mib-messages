@@ -5,8 +5,6 @@ echo 'Actual db will be renamed to old_messages_ms.db'
 echo 'Remember to rename it if you want to use'
 mv -f messages_ms.db old_messages_ms.db || echo 'messages_ms.db not exists... continue with tests'
 
-python3 -m spacy download en
-
 pytest -s --cov-report term-missing --cov mib
 
 mv -f messages_ms.db messages_ms_test.db
