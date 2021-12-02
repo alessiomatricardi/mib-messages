@@ -59,7 +59,11 @@ def create_app():
 
     # IMPORTANT: do not delete
     import mib.models
-    db.create_all(app=app)
+
+    # checking the environment
+    if flask_env != 'production':
+        # we need to populate the db
+        db.create_all()
 
     # registering to api app all specifications
     register_specifications(api_app)
