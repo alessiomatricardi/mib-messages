@@ -25,6 +25,35 @@ TODO AGGIUNGERE GESTORE RICHIESTE VERSO ALTRI MICROSERVIZI PER MIGLIORARE LEGGIB
 """
 TODO DA MODIFICARE IN BASE ALLA LABEL
 """
+
+def create_new_message():
+    # get info about the requester
+    data = request.get_json()
+    requester_id = data.get('requester_id')
+
+    # check if the requester_id exists
+    try:
+        data = {'requester_id': requester_id}
+        response = requests.get("%s/users/%s" % (USERS_ENDPOINT, str(requester_id)),
+                                timeout=REQUESTS_TIMEOUT_SECONDS,
+                                json=data)
+
+        if response.status_code != 200:
+            response_object = {
+                'status': 'failure',
+                'description': 'Error in retrieving user',
+            }
+            return response.json(), response.status_code
+
+    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+        response_object = {
+            'status': 'failure',
+            'description': 'Error in retrieving user',
+        }
+        return jsonify(response_object), 500
+
+    ## to be continue..
+
 def get_bottlebox(label):
 
     # get info about the requester
