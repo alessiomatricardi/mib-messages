@@ -11,7 +11,7 @@ paths:
   /bottlebox/{label}:
     get:
       tags: [ Messages ]
-      description: Get the list of the requested messages by the user 
+      summary: Get the list of the requested messages by the user 
       operationId: mib.resources.messages.get_bottlebox
       requestBody:
         required: true
@@ -39,7 +39,7 @@ paths:
   /messages/received/{message_id}:
     get:
       tags: [ Messages ]
-      description: Get details of a received message
+      summary: Get details of a received message
       operationId: mib.resources.messages.get_received_message
       parameters:
         - name: message_id
@@ -70,7 +70,7 @@ paths:
   /messages/drafts/{message_id}:
     get:
       tags: [ Messages ]
-      description: Get details of a draft message
+      summary: Get details of a draft message
       operationId: mib.resources.messages.get_draft_message
       parameters:
         - name: message_id
@@ -101,7 +101,7 @@ paths:
   /messages/pending/{message_id}:
     get:
       tags: [ Messages ]
-      description: Get details of a pending message
+      summary: Get details of a pending message
       operationId: mib.resources.messages.get_pending_message
       parameters:
         - name: message_id
@@ -132,7 +132,7 @@ paths:
   /messages/delivered/{message_id}:
     get:
       tags: [ Messages ]
-      description: Get details of a delivered message
+      summary: Get details of a delivered message
       operationId: mib.resources.messages.get_delivered_message
       parameters:
         - name: message_id
@@ -160,10 +160,65 @@ paths:
         default:
           description: An error occured while retrieving the message
 
+  /messages/new:
+    post:
+      summary: Creating a new Message
+      tags: 
+        - Messages 
+      operationId: mib.resources.messages.create_new_message
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewMessage'
+      responses:
+        201:
+          description: Message correctly created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    description: "It can be failure or success"
+                  description:
+                    type: string
+                    description: "Human readable result"
+        404:
+          description: User not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    description: "It can be failure or success"
+                  description:
+                    type: string
+                    description: "Human readable result"
+        500:
+          description: Failure in creating the message
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    description: "It can be failure or success"
+                  description:
+                    type: string
+                    description: "Human readable result"          
+        default:
+          description: Error blocking the user
+  
   /hide:
     delete:
       tags: [ Messages ]
-      description: Get message details
+      summary: Hide a message
       operationId: mib.resources.messages.hide_message
       requestBody:
         required: true
@@ -208,3 +263,32 @@ components:
           format: int64
           description: message ID
           example: 12
+    
+    NewMessage:
+      required:
+        - requester_id
+        - content
+        - deliver_time
+        - recipients
+      type: object
+      properties:
+        requester_id:
+          type: integer
+          format: int64
+          description: user ID
+          example: 1
+        content:
+          type: string
+          description: The content of the message
+        deliver_time:
+          type: string
+          format: date-time
+          description: Datetime to set the delivery time of the message
+        recipients:
+          type: array
+          items:
+            type: string
+            format: email
+        image:
+            type: string
+            format: base64
