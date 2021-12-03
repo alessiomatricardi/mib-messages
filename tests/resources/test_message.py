@@ -149,7 +149,7 @@ class ResourcesTest(unittest.TestCase):
         responses.add(responses.GET, "%s/users/%s" % (USERS_ENDPOINT, str(1)),
                   json={'status': 'Current user is present',
                         'user': {'content_filter_enabled' : False}}, status=200)
-        
+
         # failure wrong label
         response = app.get('/bottlebox/not_a_label', json = {'requester_id' : 1})
         self.assertEqual(response.status_code,404)
@@ -189,4 +189,5 @@ class ResourcesTest(unittest.TestCase):
         # success
         response = app.get('/bottlebox/pending', json = {'requester_id' : 1})
         self.assertEqual(response.status_code,200)
+
         
