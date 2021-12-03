@@ -13,7 +13,7 @@ class MessageManager(Manager):
 
     @staticmethod
     def create_message_recipient(message_recipient: Message_Recipient):
-        Manager.create(message_recipient)
+        Manager.create(message_recipient=message_recipient)
 
     # READ OPERATIONS
 

@@ -8,6 +8,7 @@ from mib.models import Message, Message_Recipient, Report
 import datetime
 import os
 from mib.logic.message_logic import MessageLogic
+import ast
 
 
 USERS_ENDPOINT = app.config['USERS_MS_URL']
@@ -57,24 +58,82 @@ def new_message():
         }
         return jsonify(response_object), 500
 
+    data = {'requester_id': requester_id}
+    try:
+        requester_blacklist = requests.get("%s/blacklist" % (BLACKLIST_ENDPOINT),
+                                    timeout=REQUESTS_TIMEOUT_SECONDS,
+                                    json=data)
+        if response.status_code != 200:
+                response_object = {
+                    'status': 'failure',
+                    'description': 'Error in retrieving blacklist',
+                }
+                return response.json(), response.status_code
+
+    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+            response_object = {
+                'status': 'failure',
+                'description': 'Error in retrieving blacklist',
+            }
+            return jsonify(response_object), 500
+    
+    valid_recipient_ids = []
+
+    # checks on recipients
+    for recipient_email in recipients:
+
+        # checking recipient availability
+        try:
+            
+            # checking that the recipient's email corresponds to an existing user
+            response = requests.get("%s/users/%s" % (USERS_ENDPOINT, str(recipient_email)),
+                                    timeout=REQUESTS_TIMEOUT_SECONDS)
+
+            if response.status_code != 200:
+                response_object = {
+                    'status': 'failure',
+                    'description': 'Error in retrieving user',
+                }
+                return response.json(), response.status_code
+
+            # retrieve user data
+            recipient_user = response.json()['user']
+            
+            # checking that the retrieved user corresponds to an available one
+            if recipient_user['is_active'] == False or recipient_user['is_admin'] == True or recipient_user['id'] in ast.literal_eval(requester_blacklist.json()['blacklist']):
+                response_object = {
+                    'status': 'failure',
+                    'description': 'Recipient not available',
+                }
+                return response.json(), 401
+
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+            response_object = {
+                'status': 'failure',
+                'description': 'Error in retrieving user',
+            }
+            return jsonify(response_object), 500
+
+        # the current recipient user passed all checks
+        valid_recipient_ids.append(recipient_user['id'])
+    
+
+    # creating message after passing all checks
     message = Message()
+    message.sender_id = requester_id
     message.content = content
     message.deliver_time = datetime.datetime.fromisoformat(deliver_time)
-    message.image = "BOH"  #TODO VALUTARE SE FARLO DIVENTARE BOOLEANO
+    message.image = image  #TODO VALUTARE SE FARLO DIVENTARE BOOLEANO
     if not is_draft:
         # save message as pending
         message.is_sent = True
 
     MessageManager.create_message(message)
 
-    for recipient in recipients:
-        # TODO CONTROLLA CHE EMAIL ASSOCIATA AD UTENTE ESISTA
-        # TODO CONTROLLA CHE UTENTE NON SIA NELLA MIA BLACKLIST
+    # creating the respective message recipients
+    for recipient_id in valid_recipient_ids:
+        # creating message recipient instance
         message_recipient = Message_Recipient()
-
-        # TODO RECIPIENT ID VA PRESO DALLO USER TROVATO
-        # OPPURE L'API GATEWAY FORNISCE UNA SERIE DI ID PIUTTOSTO CHE DI EMAILS
-        recipient_id = 1 if recipient_id is None else recipient_id + 1
 
         message_recipient.id = message.id
         message_recipient.is_read = False               # redundant because the db automatically set it to False
@@ -85,12 +144,19 @@ def new_message():
     # TODO IMPORTANTE!!!!!!!!!
     # CARTELLA ATTACHMENTS GIA' CREATA IN __INIT__.PY
 
-    if image is not None:
+    if image is not '':
         # create a subdirectory of 'attachments' having as name the id of the message
         os.mkdir(os.path.join(os.getcwd(), 'mib', 'static', 'attachments', str(id)))
 
         # TODO SALVA IMMAGINE
         pass
+
+    response_object = {
+                    'status': 'success',
+                    'description': 'Message and recipient(s) created',
+                }
+    return response.json(), 201
+
 
 
 # READ OPERATIONS
@@ -100,6 +166,28 @@ def get_received_bottlebox():
     # get info about the requester
     data = request.get_json()
     requester_id = data.get('requester_id')
+
+    # check if the requester_id exists
+    try:
+        data = {'requester_id': requester_id}
+        response = requests.get("%s/users/%s" % (USERS_ENDPOINT, str(requester_id)),
+                                timeout=REQUESTS_TIMEOUT_SECONDS,
+                                json=data)
+
+        if response.status_code != 200:
+            response_object = {
+                'status': 'failure',
+                'description': 'Error in retrieving user',
+            }
+            return response.json(), response.status_code
+
+    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+        response_object = {
+            'status': 'failure',
+            'description': 'Error in retrieving user',
+        }
+        return jsonify(response_object), 500
+
 
     # retrieve messages of the requested label for the specified user
     messages = MessageManager.retrieve_messages_by_label(RECEIVED_LABEL, requester_id)
@@ -147,6 +235,28 @@ def get_draft_bottlebox():
     data = request.get_json()
     requester_id = data.get('requester_id')
 
+    # check if the requester_id exists
+    try:
+        data = {'requester_id': requester_id}
+        response = requests.get("%s/users/%s" % (USERS_ENDPOINT, str(requester_id)),
+                                timeout=REQUESTS_TIMEOUT_SECONDS,
+                                json=data)
+
+        if response.status_code != 200:
+            response_object = {
+                'status': 'failure',
+                'description': 'Error in retrieving user',
+            }
+            return response.json(), response.status_code
+
+    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+        response_object = {
+            'status': 'failure',
+            'description': 'Error in retrieving user',
+        }
+        return jsonify(response_object), 500
+
+
     # retrieve messages of the requested label for the specified user
     messages = MessageManager.retrieve_messages_by_label(DRAFT_LABEL, requester_id)
 
@@ -193,6 +303,28 @@ def get_pending_bottlebox():
     data = request.get_json()
     requester_id = data.get('requester_id')
 
+    # check if the requester_id exists
+    try:
+        data = {'requester_id': requester_id}
+        response = requests.get("%s/users/%s" % (USERS_ENDPOINT, str(requester_id)),
+                                timeout=REQUESTS_TIMEOUT_SECONDS,
+                                json=data)
+
+        if response.status_code != 200:
+            response_object = {
+                'status': 'failure',
+                'description': 'Error in retrieving user',
+            }
+            return response.json(), response.status_code
+
+    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+        response_object = {
+            'status': 'failure',
+            'description': 'Error in retrieving user',
+        }
+        return jsonify(response_object), 500
+
+
     # retrieve messages of the requested label for the specified user
     messages = MessageManager.retrieve_messages_by_label(PENDING_LABEL, requester_id)
 
@@ -238,6 +370,28 @@ def get_delivered_bottlebox():
     # get info about the requester
     data = request.get_json()
     requester_id = data.get('requester_id')
+
+    # check if the requester_id exists
+    try:
+        data = {'requester_id': requester_id}
+        response = requests.get("%s/users/%s" % (USERS_ENDPOINT, str(requester_id)),
+                                timeout=REQUESTS_TIMEOUT_SECONDS,
+                                json=data)
+
+        if response.status_code != 200:
+            response_object = {
+                'status': 'failure',
+                'description': 'Error in retrieving user',
+            }
+            return response.json(), response.status_code
+
+    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+        response_object = {
+            'status': 'failure',
+            'description': 'Error in retrieving user',
+        }
+        return jsonify(response_object), 500
+
 
     # retrieve messages of the requested label for the specified user
     messages = MessageManager.retrieve_messages_by_label(DELIVERED_LABEL, requester_id)
@@ -290,6 +444,28 @@ def get_received_message(message_id):
     data = request.get_json()
     requester_id = data.get('requester_id')
 
+    # check if the requester_id exists
+    try:
+        data = {'requester_id': requester_id}
+        response = requests.get("%s/users/%s" % (USERS_ENDPOINT, str(requester_id)),
+                                timeout=REQUESTS_TIMEOUT_SECONDS,
+                                json=data)
+
+        if response.status_code != 200:
+            response_object = {
+                'status': 'failure',
+                'description': 'Error in retrieving user',
+            }
+            return response.json(), response.status_code
+
+    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+        response_object = {
+            'status': 'failure',
+            'description': 'Error in retrieving user',
+        }
+        return jsonify(response_object), 500
+
+
     # retrieve the message, if exists
     message = MessageManager.retrieve_message_by_id(RECEIVED_LABEL, message_id)
 
@@ -325,6 +501,28 @@ def get_draft_message(message_id):
     # get info about the requester
     data = request.get_json()
     requester_id = data.get('requester_id')
+
+    # check if the requester_id exists
+    try:
+        data = {'requester_id': requester_id}
+        response = requests.get("%s/users/%s" % (USERS_ENDPOINT, str(requester_id)),
+                                timeout=REQUESTS_TIMEOUT_SECONDS,
+                                json=data)
+
+        if response.status_code != 200:
+            response_object = {
+                'status': 'failure',
+                'description': 'Error in retrieving user',
+            }
+            return response.json(), response.status_code
+
+    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+        response_object = {
+            'status': 'failure',
+            'description': 'Error in retrieving user',
+        }
+        return jsonify(response_object), 500
+
 
     # retrieving the message, if exists
     message = MessageManager.retrieve_message_by_id(DRAFT_LABEL, message_id)
@@ -363,6 +561,28 @@ def get_pending_message(message_id):
     data = request.get_json()
     requester_id = data.get('requester_id')
 
+    # check if the requester_id exists
+    try:
+        data = {'requester_id': requester_id}
+        response = requests.get("%s/users/%s" % (USERS_ENDPOINT, str(requester_id)),
+                                timeout=REQUESTS_TIMEOUT_SECONDS,
+                                json=data)
+
+        if response.status_code != 200:
+            response_object = {
+                'status': 'failure',
+                'description': 'Error in retrieving user',
+            }
+            return response.json(), response.status_code
+
+    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+        response_object = {
+            'status': 'failure',
+            'description': 'Error in retrieving user',
+        }
+        return jsonify(response_object), 500
+
+
     # retrieving the message, if exists
     message = MessageManager.retrieve_message_by_id(PENDING_LABEL, message_id)
 
@@ -400,6 +620,28 @@ def get_delivered_message(message_id):
     # get info about the requester
     data = request.get_json()
     requester_id = data.get('requester_id')
+
+    # check if the requester_id exists
+    try:
+        data = {'requester_id': requester_id}
+        response = requests.get("%s/users/%s" % (USERS_ENDPOINT, str(requester_id)),
+                                timeout=REQUESTS_TIMEOUT_SECONDS,
+                                json=data)
+
+        if response.status_code != 200:
+            response_object = {
+                'status': 'failure',
+                'description': 'Error in retrieving user',
+            }
+            return response.json(), response.status_code
+
+    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+        response_object = {
+            'status': 'failure',
+            'description': 'Error in retrieving user',
+        }
+        return jsonify(response_object), 500
+
 
     # retrieving the message, if exists
     message = MessageManager.retrieve_message_by_id(DELIVERED_LABEL, message_id)
@@ -443,6 +685,28 @@ def hide_message(message_id):
     data = request.get_json()
     requester_id = data.get('requester_id')
 
+    # check if the requester_id exists
+    try:
+        data = {'requester_id': requester_id}
+        response = requests.get("%s/users/%s" % (USERS_ENDPOINT, str(requester_id)),
+                                timeout=REQUESTS_TIMEOUT_SECONDS,
+                                json=data)
+
+        if response.status_code != 200:
+            response_object = {
+                'status': 'failure',
+                'description': 'Error in retrieving user',
+            }
+            return response.json(), response.status_code
+
+    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+        response_object = {
+            'status': 'failure',
+            'description': 'Error in retrieving user',
+        }
+        return jsonify(response_object), 500
+
+
     # user must be a recipient of a RECEIVED message
     message = MessageManager.retrieve_message_by_id(RECEIVED_LABEL, message_id)
     message_recipient = MessageManager.retrieve_message_recipient(message_id, requester_id)
@@ -475,6 +739,28 @@ def report_message(message_id):
     # get info about the requester and the message
     data = request.get_json()
     requester_id = data.get('requester_id')
+
+    # check if the requester_id exists
+    try:
+        data = {'requester_id': requester_id}
+        response = requests.get("%s/users/%s" % (USERS_ENDPOINT, str(requester_id)),
+                                timeout=REQUESTS_TIMEOUT_SECONDS,
+                                json=data)
+
+        if response.status_code != 200:
+            response_object = {
+                'status': 'failure',
+                'description': 'Error in retrieving user',
+            }
+            return response.json(), response.status_code
+
+    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+        response_object = {
+            'status': 'failure',
+            'description': 'Error in retrieving user',
+        }
+        return jsonify(response_object), 500
+
 
     # user must be a recipient of a RECEIVED message
     message = MessageManager.retrieve_message_by_id(RECEIVED_LABEL, message_id)
@@ -517,6 +803,28 @@ def modify_draft_message():
     data = request.get_json()
     requester_id = data.get('requester_id')
 
+    # check if the requester_id exists
+    try:
+        data = {'requester_id': requester_id}
+        response = requests.get("%s/users/%s" % (USERS_ENDPOINT, str(requester_id)),
+                                timeout=REQUESTS_TIMEOUT_SECONDS,
+                                json=data)
+
+        if response.status_code != 200:
+            response_object = {
+                'status': 'failure',
+                'description': 'Error in retrieving user',
+            }
+            return response.json(), response.status_code
+
+    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+        response_object = {
+            'status': 'failure',
+            'description': 'Error in retrieving user',
+        }
+        return jsonify(response_object), 500
+
+
     # TODO TODO TODO GUARDA NEW MESSAGE COME E' STRUTTURATO
 
     pass
@@ -531,6 +839,28 @@ def delete_draft_message(message_id):
     data = request.get_json()
     requester_id = data.get('requester_id')
 
+    # check if the requester_id exists
+    try:
+        data = {'requester_id': requester_id}
+        response = requests.get("%s/users/%s" % (USERS_ENDPOINT, str(requester_id)),
+                                timeout=REQUESTS_TIMEOUT_SECONDS,
+                                json=data)
+
+        if response.status_code != 200:
+            response_object = {
+                'status': 'failure',
+                'description': 'Error in retrieving user',
+            }
+            return response.json(), response.status_code
+
+    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+        response_object = {
+            'status': 'failure',
+            'description': 'Error in retrieving user',
+        }
+        return jsonify(response_object), 500
+
+
     # retrieving the message, if exists
     message = MessageManager.retrieve_message_by_id(DRAFT_LABEL, message_id)
 
@@ -542,6 +872,28 @@ def delete_pending_message(message_id):
     # get info about the requester
     data = request.get_json()
     requester_id = data.get('requester_id')
+
+    # check if the requester_id exists
+    try:
+        data = {'requester_id': requester_id}
+        response = requests.get("%s/users/%s" % (USERS_ENDPOINT, str(requester_id)),
+                                timeout=REQUESTS_TIMEOUT_SECONDS,
+                                json=data)
+
+        if response.status_code != 200:
+            response_object = {
+                'status': 'failure',
+                'description': 'Error in retrieving user',
+            }
+            return response.json(), response.status_code
+
+    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+        response_object = {
+            'status': 'failure',
+            'description': 'Error in retrieving user',
+        }
+        return jsonify(response_object), 500
+
 
     # retrieving the message, if exists
     message = MessageManager.retrieve_message_by_id(PENDING_LABEL, message_id)
