@@ -17,6 +17,9 @@ app = None
 api_app = None
 logger = None
 
+# define 'attachments' directory to store message attachments
+STATIC_DIR = os.path.join(os.getcwd(), 'mib', 'static')
+ATTACHMENTS_DIR = os.path.join(os.getcwd(), 'mib', 'static', 'attachments')
 
 def create_app():
     """
@@ -59,7 +62,18 @@ def create_app():
 
     # IMPORTANT: do not delete
     import mib.models
-    db.create_all(app=app)
+
+    # checking the environment
+    if flask_env != 'production':
+        # we need to populate the db
+        db.create_all()
+
+    # create the directory 'static' if it doesn't exist
+    if not os.path.exists(STATIC_DIR):
+        os.makedirs(STATIC_DIR)
+    # create the directory 'attachments' if it doesn't exist
+    if not os.path.exists(ATTACHMENTS_DIR):
+        os.makedirs(ATTACHMENTS_DIR)
 
     # registering to api app all specifications
     register_specifications(api_app)
