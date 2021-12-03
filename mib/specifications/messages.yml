@@ -8,170 +8,18 @@ servers:
   - url: /
 
 paths:
-  /bottlebox/{label}:
-    get:
-      tags: [ Messages ]
-      summary: Get the list of the requested messages by the user 
-      operationId: mib.resources.messages.get_bottlebox
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/RequesterID'
-      parameters:  
-        - name: label
-          description: Messages type
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        200:
-          description: Return user
-        400:
-          description: Bad request
-        404:
-          description: User not found
-        default:
-          description: An error occured while retrieving the list of users
-
-  /messages/received/{message_id}:
-    get:
-      tags: [ Messages ]
-      summary: Get details of a received message
-      operationId: mib.resources.messages.get_received_message
-      parameters:
-        - name: message_id
-          description: Message id
-          in: path
-          required: true
-          schema:
-            type: integer
-            format: int64
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/RequesterID'
-      responses:
-        200:
-          description: Return message
-        400:
-          description: Bad request
-        403:
-          description: Forbidden
-        404:
-          description: Message not found
-        default:
-          description: An error occured while retrieving the message
-  
-  /messages/drafts/{message_id}:
-    get:
-      tags: [ Messages ]
-      summary: Get details of a draft message
-      operationId: mib.resources.messages.get_draft_message
-      parameters:
-        - name: message_id
-          description: Message id
-          in: path
-          required: true
-          schema:
-            type: integer
-            format: int64
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/RequesterID'
-      responses:
-        200:
-          description: Return message
-        400:
-          description: Bad request
-        403:
-          description: Forbidden
-        404:
-          description: Message not found
-        default:
-          description: An error occured while retrieving the message
-   
-  /messages/pending/{message_id}:
-    get:
-      tags: [ Messages ]
-      summary: Get details of a pending message
-      operationId: mib.resources.messages.get_pending_message
-      parameters:
-        - name: message_id
-          description: Message id
-          in: path
-          required: true
-          schema:
-            type: integer
-            format: int64
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/RequesterID'
-      responses:
-        200:
-          description: Return message
-        400:
-          description: Bad request
-        403:
-          description: Forbidden
-        404:
-          description: Message not found
-        default:
-          description: An error occured while retrieving the message
-   
-  /messages/delivered/{message_id}:
-    get:
-      tags: [ Messages ]
-      summary: Get details of a delivered message
-      operationId: mib.resources.messages.get_delivered_message
-      parameters:
-        - name: message_id
-          description: Message id
-          in: path
-          required: true
-          schema:
-            type: integer
-            format: int64
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/RequesterID'
-      responses:
-        200:
-          description: Return message
-        400:
-          description: Bad request
-        403:
-          description: Forbidden
-        404:
-          description: Message not found
-        default:
-          description: An error occured while retrieving the message
-
-  /messages/new:
+  /messages:
     post:
       summary: Creating a new Message
       tags: 
         - Messages 
-      operationId: mib.resources.messages.create_new_message
+      operationId: mib.resources.messages.new_message
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/NewMessage'
+              $ref: '#/components/schemas/Message'
       responses:
         201:
           description: Message correctly created
@@ -214,21 +62,694 @@ paths:
                     description: "Human readable result"          
         default:
           description: Error blocking the user
-  
-  /hide:
-    delete:
+
+  /bottlebox/received:
+    get:
       tags: [ Messages ]
-      summary: Hide a message
-      operationId: mib.resources.messages.hide_message
+      summary: Get the list of received messages by the user 
+      operationId: mib.resources.messages.get_received_bottlebox
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/MessageRequestBody'
+              $ref: '#/components/schemas/RequesterID'
       responses:
         200:
-          description: Delete message for the user recipient
+          description: Return list of messages
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    description: "It can be failure or success"
+                  description:
+                    type: string
+                    description: "Human readable result"
+                  messages:
+                    type: array
+                    items: 
+                      $ref : '#/components/schemas/ReceivedMessage'
+        403:
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    description: "It can be failure or success"
+                  description:
+                    type: string
+                    description: "Human readable result"
+        404:
+          description: Message not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    description: "It can be failure or success"
+                  description:
+                    type: string
+                    description: "Human readable result"
+        default:
+          description: An error occured while retrieving the list of messages
+
+  /bottlebox/drafts:
+    get:
+      tags: [ Messages ]
+      summary: Get the list of draft messages by the user 
+      operationId: mib.resources.messages.get_draft_bottlebox
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequesterID'
+      responses:
+        200:
+          description: Return list of messages
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    description: "It can be failure or success"
+                  description:
+                    type: string
+                    description: "Human readable result"
+                  messages:
+                    type: array
+                    items: 
+                      $ref : '#/components/schemas/DraftMessage'
+        403:
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    description: "It can be failure or success"
+                  description:
+                    type: string
+                    description: "Human readable result"
+        404:
+          description: Message not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    description: "It can be failure or success"
+                  description:
+                    type: string
+                    description: "Human readable result"
+        default:
+          description: An error occured while retrieving the list of messages
+
+  /bottlebox/pending:
+    get:
+      tags: [ Messages ]
+      summary: Get the list of pending messages by the user 
+      operationId: mib.resources.messages.get_pending_bottlebox
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequesterID'
+      responses:
+        200:
+          description: Return list of messages
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    description: "It can be failure or success"
+                  description:
+                    type: string
+                    description: "Human readable result"
+                  messages:
+                    type: array
+                    items: 
+                      $ref : '#/components/schemas/PendingDeliveredMessage'
+        403:
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    description: "It can be failure or success"
+                  description:
+                    type: string
+                    description: "Human readable result"
+        404:
+          description: Message not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    description: "It can be failure or success"
+                  description:
+                    type: string
+                    description: "Human readable result"
+        default:
+          description: An error occured while retrieving the list of messages
+  
+  /bottlebox/delivered:
+    get:
+      tags: [ Messages ]
+      summary: Get the list of delivered messages by the user 
+      operationId: mib.resources.messages.get_delivered_bottlebox
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequesterID'
+      responses:
+        200:
+          description: Return list of messages
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    description: "It can be failure or success"
+                  description:
+                    type: string
+                    description: "Human readable result"
+                  messages:
+                    type: array
+                    items: 
+                      $ref : '#/components/schemas/PendingDeliveredMessage'
+        403:
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    description: "It can be failure or success"
+                  description:
+                    type: string
+                    description: "Human readable result"
+        404:
+          description: Message not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    description: "It can be failure or success"
+                  description:
+                    type: string
+                    description: "Human readable result"
+        default:
+          description: An error occured while retrieving the list of messages
+
+  /messages/received/{message_id}:
+    get:
+      tags: [ Messages ]
+      summary: Get details of a received message
+      operationId: mib.resources.messages.get_received_message
+      parameters:
+        - name: message_id
+          description: Message id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequesterID'
+      responses:
+        200:
+          description: Return message
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    description: "It can be failure or success"
+                  description:
+                    type: string
+                    description: "Human readable result"
+                  message:
+                    $ref : '#/components/schemas/ReceivedMessage'
+        403:
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    description: "It can be failure or success"
+                  description:
+                    type: string
+                    description: "Human readable result"
+        404:
+          description: Message not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    description: "It can be failure or success"
+                  description:
+                    type: string
+                    description: "Human readable result"
+        default:
+          description: An error occured while retrieving the message
+  
+  /messages/drafts/{message_id}:
+    get:
+      tags: [ Messages ]
+      summary: Get details of a draft message
+      operationId: mib.resources.messages.get_draft_message
+      parameters:
+        - name: message_id
+          description: Message id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequesterID'
+      responses:
+        200:
+          description: Return message
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    description: "It can be failure or success"
+                  description:
+                    type: string
+                    description: "Human readable result"
+                  message:
+                    $ref : '#/components/schemas/DraftMessage'
+        403:
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    description: "It can be failure or success"
+                  description:
+                    type: string
+                    description: "Human readable result"
+        404:
+          description: Message not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    description: "It can be failure or success"
+                  description:
+                    type: string
+                    description: "Human readable result"
+        default:
+          description: An error occured while retrieving the message
+    put:
+      tags: [ Messages ]
+      summary: Modify a draft message
+      operationId: mib.resources.messages.modify_draft_message
+      parameters:
+        - name: message_id
+          description: Message id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Message'
+      responses:
+        200:
+          description: Return message
+        400:
+          description: Bad request
+        403:
+          description: Forbidden
+        404:
+          description: Message not found
+        default:
+          description: An error occured while retrieving the message
+    delete:
+      tags: [ Messages ]
+      summary: Delete a draft message
+      operationId: mib.resources.messages.delete_draft_message
+      parameters:
+        - name: message_id
+          description: Message id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequesterID'
+      responses:
+        200:
+          description: Message deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    description: "It can be failure or success"
+                  description:
+                    type: string
+                    description: "Human readable result"
+        403:
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    description: "It can be failure or success"
+                  description:
+                    type: string
+                    description: "Human readable result"
+        404:
+          description: Message not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    description: "It can be failure or success"
+                  description:
+                    type: string
+                    description: "Human readable result"
+        default:
+          description: An error occured while deleting the message
+   
+  /messages/pending/{message_id}:
+    get:
+      tags: [ Messages ]
+      summary: Get details of a pending message
+      operationId: mib.resources.messages.get_pending_message
+      parameters:
+        - name: message_id
+          description: Message id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequesterID'
+      responses:
+        200:
+          description: Return message
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    description: "It can be failure or success"
+                  description:
+                    type: string
+                    description: "Human readable result"
+                  message:
+                    $ref : '#/components/schemas/PendingDeliveredMessage'
+        403:
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    description: "It can be failure or success"
+                  description:
+                    type: string
+                    description: "Human readable result"
+        404:
+          description: Message not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    description: "It can be failure or success"
+                  description:
+                    type: string
+                    description: "Human readable result"
+        default:
+          description: An error occured while retrieving the message
+    delete:
+      tags: [ Messages ]
+      summary: Delete a pending message
+      operationId: mib.resources.messages.delete_pending_message
+      parameters:
+        - name: message_id
+          description: Message id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequesterID'
+      responses:
+        200:
+          description: Message deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    description: "It can be failure or success"
+                  description:
+                    type: string
+                    description: "Human readable result"
+        403:
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    description: "It can be failure or success"
+                  description:
+                    type: string
+                    description: "Human readable result"
+        404:
+          description: Message not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    description: "It can be failure or success"
+                  description:
+                    type: string
+                    description: "Human readable result"
+        default:
+          description: An error occured while deleting the message
+   
+          
+  /messages/delivered/{message_id}:
+    get:
+      tags: [ Messages ]
+      summary: Get details of a delivered message
+      operationId: mib.resources.messages.get_delivered_message
+      parameters:
+        - name: message_id
+          description: Message id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequesterID'
+      responses:
+        200:
+          description: Return message
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    description: "It can be failure or success"
+                  description:
+                    type: string
+                    description: "Human readable result"
+                  message:
+                    $ref : '#/components/schemas/PendingDeliveredMessage'
+        403:
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    description: "It can be failure or success"
+                  description:
+                    type: string
+                    description: "Human readable result"
+        404:
+          description: Message not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    description: "It can be failure or success"
+                  description:
+                    type: string
+                    description: "Human readable result"
+        default:
+          description: An error occured while retrieving the message
+
+  /messages/received/{message_id}/hide:
+    put:
+      tags: [ Messages ]
+      summary: Hide a message
+      operationId: mib.resources.messages.hide_message
+      parameters:
+        - name: message_id
+          description: Message id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequesterID'
+      responses:
+        200:
+          description: Message hidden for the recipient
+        403:
+          description: Forbidden
+        default:
+          description: An error occured while retrieving the message
+  
+  /messages/received/{message_id}/report:
+    put:
+      tags: [ Messages ]
+      summary: Report a message
+      operationId: mib.resources.messages.report_message
+      parameters:
+        - name: message_id
+          description: Message id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequesterID'
+      responses:
+        200:
+          description: Message reported
         403:
           description: Forbidden
         default:
@@ -264,12 +785,14 @@ components:
           description: message ID
           example: 12
     
-    NewMessage:
+    Message:
       required:
         - requester_id
         - content
         - deliver_time
         - recipients
+        - image
+        - is_draft
       type: object
       properties:
         requester_id:
@@ -290,5 +813,161 @@ components:
             type: string
             format: email
         image:
+          type: string
+          format: base64
+          description: Message attachment
+        is_draft:
+          type: boolean
+          description: Is the message a draft?
+    
+    ReceivedMessage:
+      required:
+        - content
+        - deliver_time
+        - id
+        - image
+        - is_read
+        - is_reported
+        - is_sender_in_blacklist
+        - sender_email
+        - sender_firstname
+        - sender_id
+        - sender_lastname
+      type: object
+      properties:
+        content:
+          type: string
+          description: The content of the message
+        deliver_time:
+          type: string
+          format: date-time
+          description: When the message was received
+        id:
+          type: integer
+          format: int64
+          description: ID of the message
+        image:
+          type: string
+          format: base64
+          description: Message attachment
+        is_read:
+          type: boolean
+          description: True if the message is read
+        is_reported:
+          type: boolean
+          description: True if the message has been reported
+        is_sender_in_blacklist:
+          type: boolean
+          description: True if the sender is into the user blacklist
+        sender_email:
+          type: string
+          format: email
+          description: Email of the sender
+        sender_firstname:
+          type: string
+          description: Firstname of the sender
+        sender_id:
+          type: integer
+          format: int64
+          description: ID of the sender
+        sender_lastname:
+          type: string
+          description: Lastname of the sender
+
+    Recipient:
+      required:
+        - email
+        - firstname
+        - id
+        - is_in_blacklist
+        - lastname
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          description: Recipient email
+        firstname:
+          type: string
+          description: Recipient firstname
+        id:
+          type: integer
+          format: int64
+          description: Recipient ID
+        is_in_blacklist:
+          type: boolean
+          description: True if the recipient is in the blacklist
+        lastname:
+          type: string
+          description: Recipient lastname
+
+    PendingDeliveredMessage:
+      required:
+        - content
+        - deliver_time
+        - id
+        - image
+        - recipients
+        - sender_id
+      type: object
+      properties:
+        content:
+          type: string
+          description: The content of the message
+        deliver_time:
+          type: string
+          format: date-time
+          description: When the message was received
+        id:
+          type: integer
+          format: int64
+          description: ID of the message
+        image:
+          type: string
+          format: base64
+          description: Message attachment
+        recipients:
+          type: array
+          items:
+            $ref: '#/components/schemas/Recipient'
+          description: True if the message is read
+        sender_id:
+          type: integer
+          format: int64
+          description: ID of the sender
+    
+    DraftMessage:
+      required:
+        - content
+        - deliver_time
+        - id
+        - image
+        - recipients
+        - sender_id
+      type: object
+      properties:
+        content:
+          type: string
+          description: The content of the message
+        deliver_time:
+          type: string
+          format: date-time
+          description: When the message was received
+        id:
+          type: integer
+          format: int64
+          description: ID of the message
+        image:
+          type: string
+          format: base64
+          description: Message attachment
+        recipients:
+          type: array
+          items:
             type: string
-            format: base64
+            format: email
+          description: True if the message is read
+        sender_id:
+          type: integer
+          format: int64
+          description: ID of the sender

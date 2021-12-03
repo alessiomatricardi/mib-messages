@@ -4,8 +4,10 @@ from mib.dao.report_manager import ReportManager
 from flask import jsonify
 import requests
 from mib import app
-from mib.emails import send_email
-from mib.content_filter import censure_content
+from mib.models import Message, Message_Recipient, Report
+import datetime
+import os
+from mib.logic.message_logic import MessageLogic
 
 
 USERS_ENDPOINT = app.config['USERS_MS_URL']
@@ -21,15 +23,18 @@ DELIVERED_LABEL = 'delivered'
 TODO AGGIUNGERE GESTORE RICHIESTE VERSO ALTRI MICROSERVIZI PER MIGLIORARE LEGGIBILITA` CODICE
 '''
 
+# CREATE OPERATIONS
 
-"""
-TODO DA MODIFICARE IN BASE ALLA LABEL
-"""
-
-def create_new_message():
+def new_message():
     # get info about the requester
     data = request.get_json()
     requester_id = data.get('requester_id')
+    content = data.get('content')
+    deliver_time = data.get('deliver_time')
+    recipients = data.get('recipients')
+    image = data.get('image') # TODO VALUTARE DI INVIARE NEL CAMPO "FILES" ???
+    # TODO SEMPRE IMMAGINE: SE FORNITO JSON, VA FORNITO ANCHE IL FORMATO DELL'IMMAGINE (.JPG, .PNG, ....)
+    is_draft = data.get('is_draft')
 
     # check if the requester_id exists
     try:
@@ -52,59 +57,223 @@ def create_new_message():
         }
         return jsonify(response_object), 500
 
-    ## to be continue..
+    message = Message()
+    message.content = content
+    message.deliver_time = datetime.datetime.fromisoformat(deliver_time)
+    message.image = "BOH"  #TODO VALUTARE SE FARLO DIVENTARE BOOLEANO
+    if not is_draft:
+        # save message as pending
+        message.is_sent = True
 
-def get_bottlebox(label):
+    MessageManager.create_message(message)
 
+    for recipient in recipients:
+        # TODO CONTROLLA CHE EMAIL ASSOCIATA AD UTENTE ESISTA
+        # TODO CONTROLLA CHE UTENTE NON SIA NELLA MIA BLACKLIST
+        message_recipient = Message_Recipient()
+
+        # TODO RECIPIENT ID VA PRESO DALLO USER TROVATO
+        # OPPURE L'API GATEWAY FORNISCE UNA SERIE DI ID PIUTTOSTO CHE DI EMAILS
+        recipient_id = 1 if recipient_id is None else recipient_id + 1
+
+        message_recipient.id = message.id
+        message_recipient.is_read = False               # redundant because the db automatically set it to False
+        message_recipient.recipient_id = recipient_id
+
+        MessageManager.create_message_recipient(message_recipient)
+
+    # TODO IMPORTANTE!!!!!!!!!
+    # CARTELLA ATTACHMENTS GIA' CREATA IN __INIT__.PY
+
+    if image is not None:
+        # create a subdirectory of 'attachments' having as name the id of the message
+        os.mkdir(os.path.join(os.getcwd(), 'mib', 'static', 'attachments', str(id)))
+
+        # TODO SALVA IMMAGINE
+        pass
+
+
+# READ OPERATIONS
+
+
+def get_received_bottlebox():
     # get info about the requester
     data = request.get_json()
     requester_id = data.get('requester_id')
 
-    # check if the user_id exists
-    try:
-        data = {'requester_id': requester_id}
-        response = requests.get("%s/users/%s" % (USERS_ENDPOINT, str(requester_id)),
-                                timeout=REQUESTS_TIMEOUT_SECONDS,
-                                json=data)
-
-        if response.status_code != 200:
-            response_object = {
-                'status': 'failure',
-                'description': 'Error in retrieving user',
-            }
-            return response.json(), response.status_code
-
-    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
-        response_object = {
-            'status': 'failure',
-            'description': 'Error in retrieving user',
-        }
-        return jsonify(response_object), 500
-
     # retrieve messages of the requested label for the specified user
-    messages = MessageManager.retrieve_messages_by_label(label, requester_id)
-
-    # check if the requested label is correct
-    if messages is None:
-        response_object = {
-            'status': 'failure',
-            'description': 'Bad request: Label is wrong',
-        }
-        return jsonify(response_object), 400
+    messages = MessageManager.retrieve_messages_by_label(RECEIVED_LABEL, requester_id)
 
     messages_json = []
-    if label == 'received':
-        # received messages needs is_read field in order to inform the recipient about unread messages
-        for message in messages:
-            message_det = message[0].serialize()
-            message_det['is_read'] = message[1]
-            messages_json.append(message_det)
-    else:
-        # other messages needs recipients list
-        for message in messages:
-            message_det = message.serialize()
-            message_det['recipients'] = MessageManager.retrieve_message_recipients(message.id)
-            messages_json.append(message_det)
+
+    for message in messages:
+        # get all information we need
+        message_json, status_code = MessageLogic.get_received_message(message, requester_id)
+
+        # check status code
+        if status_code == 200:
+            messages_json.append(message_json)
+        else:
+            if status_code == 403:
+                response_object = {
+                    'status': 'failure',
+                    'description': 'Forbidden: user is not a recipient of this message'
+                }
+            elif status_code == 404:
+                response_object = {
+                    'status': 'failure',
+                    'description': 'Message not found'
+                }
+            elif status_code == 500:
+                response_object = {
+                    'status': 'failure',
+                    'description': 'Server error: Error in retrieving sender/blacklist',
+                }
+
+            return jsonify(response_object), status_code
+
+
+    response_object = {
+        'status': 'success',
+        'description': 'Bottlebox retrieved',
+        'messages': messages_json
+    }
+
+    return jsonify(response_object), 200
+
+
+def get_draft_bottlebox():
+    # get info about the requester
+    data = request.get_json()
+    requester_id = data.get('requester_id')
+
+    # retrieve messages of the requested label for the specified user
+    messages = MessageManager.retrieve_messages_by_label(DRAFT_LABEL, requester_id)
+
+    messages_json = []
+
+    for message in messages:
+        # get all information we need
+        message_json, status_code = MessageLogic.get_draft_message(message, requester_id)
+
+        # check status code
+        if status_code == 200:
+            messages_json.append(message_json)
+        else:
+            if status_code == 403:
+                response_object = {
+                    'status': 'failure',
+                    'description': 'Forbidden: user is not the sender of this message'
+                }
+            elif status_code == 404:
+                response_object = {
+                    'status': 'failure',
+                    'description': 'Message not found'
+                }
+            elif status_code == 500:
+                response_object = {
+                    'status': 'failure',
+                    'description':
+                    'Server error: Error in retrieving sender/blacklist',
+                }
+
+            return jsonify(response_object), status_code
+
+    response_object = {
+        'status': 'success',
+        'description': 'Bottlebox retrieved',
+        'messages': messages_json
+    }
+
+    return jsonify(response_object), 200
+
+
+def get_pending_bottlebox():
+    # get info about the requester
+    data = request.get_json()
+    requester_id = data.get('requester_id')
+
+    # retrieve messages of the requested label for the specified user
+    messages = MessageManager.retrieve_messages_by_label(PENDING_LABEL, requester_id)
+
+    messages_json = []
+
+    for message in messages:
+        # get all information we need
+        message_json, status_code = MessageLogic.get_pending_or_delivered_message(message, requester_id)
+
+        # check status code
+        if status_code == 200:
+            messages_json.append(message_json)
+        else:
+            if status_code == 403:
+                response_object = {
+                    'status': 'failure',
+                    'description': 'Forbidden: user is not the sender of this message'
+                }
+            elif status_code == 404:
+                response_object = {
+                    'status': 'failure',
+                    'description': 'Message not found'
+                }
+            elif status_code == 500:
+                response_object = {
+                    'status': 'failure',
+                    'description':
+                    'Server error: Error in retrieving sender/blacklist',
+                }
+
+            return jsonify(response_object), status_code
+
+    response_object = {
+        'status': 'success',
+        'description': 'Bottlebox retrieved',
+        'messages': messages_json
+    }
+
+    return jsonify(response_object), 200
+
+
+def get_delivered_bottlebox():
+    # get info about the requester
+    data = request.get_json()
+    requester_id = data.get('requester_id')
+
+    # retrieve messages of the requested label for the specified user
+    messages = MessageManager.retrieve_messages_by_label(DELIVERED_LABEL, requester_id)
+
+    messages_json = []
+
+    for message in messages:
+        # get all information we need
+        message_json, status_code = MessageLogic.get_pending_or_delivered_message(
+            message, requester_id)
+
+        # check status code
+        if status_code == 200:
+            messages_json.append(message_json)
+        else:
+            if status_code == 403:
+                response_object = {
+                    'status':
+                    'failure',
+                    'description':
+                    'Forbidden: user is not the sender of this message'
+                }
+            elif status_code == 404:
+                response_object = {
+                    'status': 'failure',
+                    'description': 'Message not found'
+                }
+            elif status_code == 500:
+                response_object = {
+                    'status':
+                    'failure',
+                    'description':
+                    'Server error: Error in retrieving sender/blacklist',
+                }
+
+            return jsonify(response_object), status_code
 
     response_object = {
         'status': 'success',
@@ -121,128 +290,34 @@ def get_received_message(message_id):
     data = request.get_json()
     requester_id = data.get('requester_id')
 
-    # check if the message exists
+    # retrieve the message, if exists
     message = MessageManager.retrieve_message_by_id(RECEIVED_LABEL, message_id)
-    if not message:
-        response_object = {
-            'status' : 'failure',
-            'description' : 'Message not found'
-        }
-        return jsonify(response_object), 404
 
-    # check if the user_id is a recipient of the message
-    message_recipient = MessageManager.retrieve_message_recipient(message_id, requester_id)
-    if not message_recipient:
-        response_object = {
-            'status' : 'failure',
-            'description' : 'Forbidden: user is not a recipient of this message'
-        }
-        return jsonify(response_object), 403
+    message_json, status_code = MessageLogic.get_received_message(message, requester_id)
 
-    # get sender informations
-    sender = None
-
-    try:
-        data = {'requester_id': message.sender_id}
-        response = requests.get("%s/users/%s" % (USERS_ENDPOINT, str(message.sender_id)),
-                                timeout=REQUESTS_TIMEOUT_SECONDS,
-                                json=data)
-
-        if response.status_code != 200:
-            return response.json(), response.status_code
-
-        sender = response.json()['user']
-
-    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
-
+    if status_code == 403:
         response_object = {
             'status': 'failure',
-            'description': 'Error in retrieving the sender',
+            'description': 'Forbidden: user is not a recipient of this message'
         }
-        return jsonify(response_object), 500
-    
-
-    # check if the message is already read. If not, set it as read and send a notification to the sender
-    if not message_recipient.is_read:
-
-        MessageManager.set_message_as_read(message_recipient)
-
-        # TODO interazione con user per ricavare il nome dell'utente recipient
-        email_message = "Subject: Message notification\n\nThe message you sent to " + "PEPPINO" + " has been read."
-
-
-        email = sender['email']
-
-        send_email(email, email_message)
-
-    # check if the sender is in our blacklist, in order to don't permit to see his profile
-    # TODO INTERAZIONE CON BLACKLIST
-    '''
-    other_id = detailed_message.sender_id
-
-    # checking if the message is from a blocked or blocking user
-    blacklist_istance = bottlebox_logic.user_blacklist_status(other_id,current_user.id)
-
-    # blocked variable is passed to render_template in order to display or not the reply and block buttons
-    if not blacklist_istance:
-        blocked = False
-    else:
-        blocked = True
-    '''
-    is_sender_in_blacklist = True
-    
-
-    message_json = message.serialize()
-
-    # store info of the sender
-    message_json['sender_firstname'] = sender['firstname']
-    message_json['sender_lastname'] = sender['lastname']
-    message_json['sender_email'] = sender['email']
-
-    # store that the sender is into blacklist or not
-    message_json['is_sender_in_blacklist'] = is_sender_in_blacklist
-
-    # store that the message is read or not
-    message_json['is_read'] = message_recipient.is_read
-
-    # censure the message if the user has content filter enabled
-    content_filter_enabled = False
-
-    # TODO implementare in user /users/id/content_filter
-    '''
-    try:
-        data = {'requester_id': requester_id}
-        response = requests.get("%s/users/%s/content_filter" % (USERS_ENDPOINT, str(requester_id)),
-                                timeout=REQUESTS_TIMEOUT_SECONDS,
-                                json=data)
-
-        if response.status_code != 200:
-            return response.json(), response.status_code
-
-        content_filter_enabled = response.json()['enabled']
-
-    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
-
+    elif status_code == 404:
         response_object = {
             'status': 'failure',
-            'description': 'Error in retrieving the sender',
+            'description': 'Message not found'
         }
-        return jsonify(response_object), 500
-    '''
-    if content_filter_enabled:
-        censored_content = censure_content(message.content)
-        message_json['content'] = censored_content
+    elif status_code == 500:
+        response_object = {
+            'status': 'failure',
+            'description': 'Server error: Error in retrieving sender/blacklist',
+        }
+    elif status_code == 200:
+        response_object = {
+            'status': 'success',
+            'description': 'Message retrieved',
+            'message': message_json
+        }
 
-    # check if the user already reported this message
-    reported = ReportManager.is_message_reported(message_id, requester_id)
-    message_json['is_reported'] = reported
-
-    response_object = {
-        'status' : 'success',
-        'description' : 'Message retrieved',
-        'message' : message_json
-    }
-    return jsonify(response_object), 200
+    return jsonify(response_object), status_code
 
 
 def get_draft_message(message_id):
@@ -254,52 +329,32 @@ def get_draft_message(message_id):
     # retrieving the message, if exists
     message = MessageManager.retrieve_message_by_id(DRAFT_LABEL, message_id)
 
-    if not message:
+    message_json, status_code = MessageLogic.get_draft_message(message, requester_id)
+
+    if status_code == 403:
         response_object = {
-            'status' : 'failure',
-            'description' : 'Message not found'
+            'status': 'failure',
+            'description': 'Forbidden: user is not the sender of this message'
         }
-        return jsonify(response_object), 404
-
-    # check if the user_id is the sender of the message
-    if message.sender_id != requester_id:
+    elif status_code == 404:
         response_object = {
-            'status' : 'failure',
-            'description' : 'Forbidden: user is not the sender of this message'
+            'status': 'failure',
+            'description': 'Message not found'
         }
-        return jsonify(response_object), 403
+    elif status_code == 500:
+        response_object = {
+            'status': 'failure',
+            'description':
+            'Server error: Error in retrieving sender/blacklist',
+        }
+    elif status_code == 200:
+        response_object = {
+            'status': 'success',
+            'description': 'Message retrieved',
+            'message': message_json
+        }
 
-    recipients = MessageManager.retrieve_message_recipients(message_id)
-
-    # API gateway will use this field to render the form
-    recipient_emails = ['a.matricardi@studenti.unipi.it']
-
-    # checks that already saved recipients are still available (they could have become inactive or blocked/blocking user)
-    for recipient in recipients:
-        # TODO CHIEDI A USER SE UTENTE DISPONIBILE
-        # TODO CHIEDI A BLACKLIST SE UTENTE BLOCCATO/BLOCCANTE
-        user = dict()
-        user['is_active'] = True
-        user['email'] = 'prova@example.com'
-
-        if not user['is_active']: #'''or user is in blacklist'''
-            # remove user from recipients
-            MessageManager.remove_message_recipient(message_id, 123)
-        else:
-            recipient_emails.append(user['email'])
-
-
-    message_json = message.serialize()
-
-    # store recipients
-    message_json['recipients'] = recipient_emails
-
-    response_object = {
-        'status' : 'success',
-        'description' : 'Message retrieved',
-        'message' : message_json
-    }
-    return jsonify(response_object), 200
+    return jsonify(response_object), status_code
 
 
 def get_pending_message(message_id):
@@ -311,8 +366,33 @@ def get_pending_message(message_id):
     # retrieving the message, if exists
     message = MessageManager.retrieve_message_by_id(PENDING_LABEL, message_id)
 
-    # since pending and delivered messages are similar, the share most of the code
-    return get_pending_or_delivered_message(message, requester_id)
+    # since pending and delivered messages are similar, they share most of the code
+    message_json, status_code = MessageLogic.get_pending_or_delivered_message(message, requester_id)
+
+    if status_code == 403:
+        response_object = {
+            'status': 'failure',
+            'description': 'Forbidden: user is not the sender of this message'
+        }
+    elif status_code == 404:
+        response_object = {
+            'status': 'failure',
+            'description': 'Message not found'
+        }
+    elif status_code == 500:
+        response_object = {
+            'status': 'failure',
+            'description':
+            'Server error: Error in retrieving sender/blacklist',
+        }
+    elif status_code == 200:
+        response_object = {
+            'status': 'success',
+            'description': 'Message retrieved',
+            'message': message_json
+        }
+
+    return jsonify(response_object), status_code
 
 
 def get_delivered_message(message_id):
@@ -324,126 +404,50 @@ def get_delivered_message(message_id):
     # retrieving the message, if exists
     message = MessageManager.retrieve_message_by_id(DELIVERED_LABEL, message_id)
 
-    # since pending and delivered messages are similar, the share most of the code
-    return get_pending_or_delivered_message(message, requester_id)
+    # since pending and delivered messages are similar, they share most of the code
+    message_json, status_code = MessageLogic.get_pending_or_delivered_message(
+        message, requester_id)
 
-
-def get_pending_or_delivered_message(message, requester_id):
-    
-    if not message:
-        response_object = {
-            'status' : 'failure',
-            'description' : 'Message not found'
-        }
-        return jsonify(response_object), 404
-
-    # check if the user_id is the sender of the message
-    if message.sender_id != requester_id:
-        response_object = {
-            'status' : 'failure',
-            'description' : 'Forbidden: user is not the sender of this message'
-        }
-        return jsonify(response_object), 403
-
-    # TODO INVESTIGATE
-    # checks if a recipient has blocked the current_user or has been blocked
-    '''
-    for i in range(len(recipients)):
-        other_id = recipients[i].id
-
-        blacklist_istance = bottlebox_logic.user_blacklist_status(other_id,current_user.id)
-
-        # appends to blocked_info a tuple to link the respective recipient and its blacklist status
-        if not blacklist_istance:
-            blocked_info.append([recipients[i], False])
-        else:
-            blocked_info.append([recipients[i], True])
-    '''
-
-    # retrieve sender info
-
-    sender = None
-
-    try:
-        auth_data = {'requester_id': message.sender_id}
-        response = requests.get("%s/users/%s" %
-                                (USERS_ENDPOINT, str(message.sender_id)),
-                                timeout=REQUESTS_TIMEOUT_SECONDS,
-                                json=auth_data)
-
-        if response.status_code != 200:
-            return response.json(), response.status_code
-
-        sender = response.json()['user']
-
-    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
-
+    if status_code == 403:
         response_object = {
             'status': 'failure',
-            'description': 'Error in retrieving user',
+            'description': 'Forbidden: user is not the sender of this message'
         }
-        return jsonify(response_object), 500
+    elif status_code == 404:
+        response_object = {
+            'status': 'failure',
+            'description': 'Message not found'
+        }
+    elif status_code == 500:
+        response_object = {
+            'status': 'failure',
+            'description':
+            'Server error: Error in retrieving sender/blacklist',
+        }
+    elif status_code == 200:
+        response_object = {
+            'status': 'success',
+            'description': 'Message retrieved',
+            'message': message_json
+        }
 
-    recipients = MessageManager.retrieve_message_recipients(message.id)
-
-    recipients_list = []
-    user = dict()
-    user['email'] = 'a.matricardi@studenti.unipi.it'
-    user['id'] = 1
-    user['firstname'] = 'Alessio'
-    user['lastname'] = 'Matricardi'
-    user['available'] = False
-
-    # checks that already saved recipients are still available (they could have become inactive or blocked/blocking user)
-    for recipient in recipients:
-        # TODO CHIEDI A USER di darti utente
-        # TODO CHIEDI A BLACKLIST SE UTENTE BLOCCATO/BLOCCANTE
-        recipients_list.append(user)
-
-
-    message_json = message.serialize()
-
-    # store recipients
-    message_json['recipients'] = recipients_list
-
-    # censure the message if the user has content filter enabled
-    if sender['content_filter_enabled']:
-        censored_content = censure_content(message.content)
-        message_json['content'] = censored_content
-
-    response_object = {
-        'status' : 'success',
-        'description' : 'Message retrieved',
-        'message' : message_json
-    }
-    return jsonify(response_object), 200
+    return jsonify(response_object), status_code
 
 
-# POST /hide/<message_id>/<user_id>
-def hide_message():
+# UPDATE OPERATIONS
 
-    # TODO L'API gateway valida il form e passa i parametri user_id e message_id (SEE CODE BELOW)
-    """
-    form = HideForm()
 
-    if not form.validate_on_submit():
-        abort(400)
+def hide_message(message_id):
 
-    message_id = 0
-    try:
-        # retrieve the message id from the form
-        message_id = int(form.message_id.data)
-    except:
-        abort(400)
-    """
     # get info about the requester and the message
     data = request.get_json()
     requester_id = data.get('requester_id')
-    message_id = data.get('message_id')
 
+    # user must be a recipient of a RECEIVED message
+    message = MessageManager.retrieve_message_by_id(RECEIVED_LABEL, message_id)
     message_recipient = MessageManager.retrieve_message_recipient(message_id, requester_id)
 
-    if message_recipient is None: 
+    if message is None or message_recipient is None:
         response_object = {
             'status' : 'failure',
             'description' : 'Forbidden: user is not a recipient of this message'
@@ -464,3 +468,82 @@ def hide_message():
         'description' : 'Message successfully deleted'
     }
     return jsonify(response_object), 200
+
+
+def report_message(message_id):
+
+    # get info about the requester and the message
+    data = request.get_json()
+    requester_id = data.get('requester_id')
+
+    # user must be a recipient of a RECEIVED message
+    message = MessageManager.retrieve_message_by_id(RECEIVED_LABEL, message_id)
+    message_recipient = MessageManager.retrieve_message_recipient(
+        message_id, requester_id)
+
+    if message is None or message_recipient is None:
+        response_object = {
+            'status': 'failure',
+            'description': 'Forbidden: user is not a recipient of this message'
+        }
+        return jsonify(response_object), 403
+
+    is_reported = ReportManager.is_message_reported(message_id, requester_id)
+
+    if is_reported:
+        response_object = {
+            'status': 'failure',
+            'description': 'Forbidden: already reported'
+        }
+        return jsonify(response_object), 403
+
+    report = Report()
+    report.reporting_user_id = requester_id
+    report.message_id = message_id
+    report.reporting_user_id = datetime.datetime.now()
+
+    ReportManager.create_report(report)
+
+    response_object = {
+        'status': 'success',
+        'description': 'Message successfully reported'
+    }
+    return jsonify(response_object), 200
+
+
+def modify_draft_message():
+
+    # get info about the requester
+    data = request.get_json()
+    requester_id = data.get('requester_id')
+
+    # TODO TODO TODO GUARDA NEW MESSAGE COME E' STRUTTURATO
+
+    pass
+
+
+# DELETE OPERATIONS
+
+
+def delete_draft_message(message_id):
+
+    # get info about the requester
+    data = request.get_json()
+    requester_id = data.get('requester_id')
+
+    # retrieving the message, if exists
+    message = MessageManager.retrieve_message_by_id(DRAFT_LABEL, message_id)
+
+    return MessageLogic.delete_message(message, requester_id)
+
+
+def delete_pending_message(message_id):
+
+    # get info about the requester
+    data = request.get_json()
+    requester_id = data.get('requester_id')
+
+    # retrieving the message, if exists
+    message = MessageManager.retrieve_message_by_id(PENDING_LABEL, message_id)
+
+    return MessageLogic.delete_message(message, requester_id)
