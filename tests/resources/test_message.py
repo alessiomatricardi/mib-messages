@@ -127,38 +127,66 @@ class ResourcesTest(unittest.TestCase):
         response = app.get('/bottlebox/delivered', json = {'requester_id' : 1})
         self.assertEqual(response.status_code, 500)
 
+        # failure without users response not already mocked, status_code 500
+        response = app.get('/bottlebox/pending', json = {'requester_id' : 1})
+        self.assertEqual(response.status_code, 500)
+
+        # failure without users response not already mocked, status_code 500
+        response = app.get('/bottlebox/received', json = {'requester_id' : 1})
+        self.assertEqual(response.status_code, 500)
+
+        # failure without users response not already mocked, status_code 500
+        response = app.get('/bottlebox/drafts', json = {'requester_id' : 1})
+        self.assertEqual(response.status_code, 500)
+
 
         # mocking
+        # user 2 doesn't exist
         responses.add(responses.GET, "%s/users/%s" % (USERS_ENDPOINT, str(2)),
                   json={'status': 'Current user not present'}, status=404)
 
+        # user 1 exists
         responses.add(responses.GET, "%s/users/%s" % (USERS_ENDPOINT, str(1)),
                   json={'status': 'Current user is present',
                         'user': {'content_filter_enabled' : False}}, status=200)
-
-        # falure user not found
-        response = app.get('/bottlebox/delivered', json = {'requester_id' : 2})
-        self.assertEqual(response.status_code, 404)
         
-
         # failure wrong label
         response = app.get('/bottlebox/not_a_label', json = {'requester_id' : 1})
         self.assertEqual(response.status_code,404)
+        
+        # DELIVERED BOTTLEBOX
+        # failure user not found
+        response = app.get('/bottlebox/delivered', json = {'requester_id' : 2})
+        self.assertEqual(response.status_code, 404)
 
-        # retrieving received messages bottlebox
+        # success 
+        response = app.get('/bottlebox/delivered', json = {'requester_id' : 1})
+        self.assertEqual(response.status_code, 200)
+        
+        # RECEIVED BOTTLEBOX
+        # failure user not found
+        response = app.get('/bottlebox/received', json = {'requester_id' : 2})
+        self.assertEqual(response.status_code, 404)
+
+        # success
         response = app.get('/bottlebox/received', json = {'requester_id' : 1})
         self.assertEqual(response.status_code,200)
 
-        # retrieving delivered messages bottlebox
-        response = app.get('/bottlebox/drafts', json={'requester_id': 1})
-        self.assertEqual(response.status_code, 200)
+        # DRAFTS BOTTLEBOX
+        # failure user not found
+        response = app.get('/bottlebox/drafts', json = {'requester_id' : 2})
+        self.assertEqual(response.status_code, 404)
 
-        # retrieving delivered messages bottlebox
-        response = app.get('/bottlebox/pending', json={'requester_id': 1})
-        self.assertEqual(response.status_code, 200)
-
-        # retrieving delivered messages bottlebox
-        response = app.get('/bottlebox/delivered', json = {'requester_id' : 1})
+        # success
+        response = app.get('/bottlebox/drafts', json = {'requester_id' : 1})
         self.assertEqual(response.status_code,200)
 
+        # PENDING BOTTLEBOX
+        # failure user not found
+        response = app.get('/bottlebox/pending', json = {'requester_id' : 2})
+        self.assertEqual(response.status_code, 404)
+
+        # success
+        response = app.get('/bottlebox/pending', json = {'requester_id' : 1})
+        self.assertEqual(response.status_code,200)
         
