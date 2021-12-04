@@ -150,8 +150,25 @@ def new_message():
         # create a subdirectory of 'attachments' having as name the id of the message
         os.mkdir(os.path.join(os.getcwd(), 'mib', 'static', 'attachments', str(id)))
 
-        # TODO SALVA IMMAGINE
-        pass
+        # TODO save attachment
+        
+        # decoding image
+        #img_data = BytesIO(base64.b64decode(img_base64))
+
+        # store it, in case of a previously inserted image it's going to be overwritten
+        try:
+
+            #img = Image.open(img_data)
+            path_to_save = os.path.join(os.getcwd(), 'mib', 'static', 'attachments',
+                                    str(id), 'attachment' + '.png')
+            #img.save(path_to_save, "JPEG", quality=100, subsampling=0)
+
+        except Exception:
+            response_object = {
+                'status': 'failure',
+                'description': 'Error in saving the image',
+            }
+            return jsonify(response_object), 500
 
     response_object = {
         'status': 'success',
