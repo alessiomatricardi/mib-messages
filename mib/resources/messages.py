@@ -856,8 +856,14 @@ def modify_draft_message(message_id):
     by the Gateway (delete=True and image provided), image deletion has the precedence
     Note that if delete_image=False and new_image = '' -> keep current attachment
     '''
-    delete_image = False # TODO REMOVE THIS
-    new_image = ''
+    # check if the user_id is the sender of the draft message
+    if draft_message.sender_id != requester_id:
+        response_object = {
+            'status': 'failure',
+            'description': 'Forbidden: user is not the sender of this message'
+        }
+        return jsonify(response_object), 403
+        
     if delete_image:
         # TODO REMOVE ATTACHMENT
         # TODO REMOVE FOLDER STATIC/ATTACHMENTS/<MESSAGE_ID>
@@ -865,12 +871,73 @@ def modify_draft_message(message_id):
     elif new_image != '':
         pass
         # TODO replace old attachment with the new one
-    
+
+    # updating message fields
+    draft_message.content = content
+    draft_message.deliver_time = datetime.datetime.fromisoformat(deliver_time)
+
+    for recipient in recipients:
+        data = {'requester_id':requester_id}
+        try: 
+            recipient_user =  requests.get("%s/users/%s" % (USERS_ENDPOINT, str(recipient)),
+                                    timeout=REQUESTS_TIMEOUT_SECONDS,
+                                    json=data)
+
+            if recipient_user.status_code != 200:
+
+                return recipient_user.json(), recipient_user.status_code
+
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+            response_object = {
+                'status': 'failure',
+                'description': 'Error in retrieving user',
+            }
+            return jsonify(response_object), 500
+        
+
+        try: 
+            blacklist = requests.get("%s/blacklist/" % (BLACKLIST_ENDPOINT),
+                                    timeout=REQUESTS_TIMEOUT_SECONDS,
+                                    json=data)
+            
+            if blacklist.status_code != 200:
+                return blacklist.json(), blacklist.status_code
+
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+            response_object = {
+                'status': 'failure',
+                'description': 'Error in retrieving user',
+            }
+            return jsonify(response_object), 500
+        
+        recipient_user_data =  recipient_user.json()
+        recipient_user_id = recipient_user_data['user']['id']
+        
+        message_recipient = MessageManager.retrieve_message_recipient(draft_message.id,recipient_user_id)
+        blacklist_data = blacklist.json()
+
+        if recipient_user_id in blacklist_data['blacklist']:
+            if message_recipient != []:
+                MessageManager.remove_message_recipient(draft_message.id,recipient_user_id)
+        else:
+            if not message_recipient:
+                msg_recipient = Message_Recipient()
+                msg_recipient.id = draft_message.id
+                msg_recipient.recipient_id = recipient_user_id
+                MessageManager.create_message_recipient(msg_recipient)
+        
     # set the message as sent
     # The message is in 'pending' status by now
     if is_sent:
         draft_message.is_sent = True
-        MessageManager.update_message(draft_message)
+        
+    MessageManager.update_message(draft_message)
+
+    response_object={
+        'status': 'success',
+        'message': 'Draft modified'
+    }
+    return response_object,200
 
 
 # DELETE OPERATIONS
@@ -890,7 +957,6 @@ def delete_draft_message(message_id):
                                 json=data)
 
         if response.status_code != 200:
-
             return response.json(), response.status_code
 
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):

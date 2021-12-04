@@ -444,7 +444,7 @@ class ResourcesTest(unittest.TestCase):
         self.assertEqual(response.status_code,200) 
         
     @responses.activate
-    def test_04_delete_draft_message(self):
+    def test_04_modify_and_delete_draft_message(self):
         # creating an app instace to run test activities
         tested_app = create_app()
         USERS_ENDPOINT = tested_app.config['USERS_MS_URL']
@@ -486,13 +486,158 @@ class ResourcesTest(unittest.TestCase):
             'is_active': True,
             'content_filter_enabled': False
         }
+
+        json_modify_draft = {
+            'requester_id': user1['id'],
+            'content' : 'testing!',
+            'deliver_time' : '2025-01-01 15:00',
+            'recipients' : [user2['email']],
+            'new_image': '',
+            'delete_image':False,
+            'is_sent': False
+        }
+        json_modify_draft_wrong_requester = {
+            'requester_id': user2['id'],
+            'content' : 'testing!',
+            'deliver_time' : '2025-01-01 15:00',
+            'recipients' : [user2['email']],
+            'new_image': '',
+            'delete_image': False,
+            'is_sent': False
+        }
+        json_modify_draft_unexisting_requester = {
+            'requester_id': user3['id'],
+            'content' : 'testing!',
+            'deliver_time' : '2025-01-01 15:00',
+            'recipients' : [user2['email']],
+            'new_image': '',
+            'delete_image':False,
+            'is_sent': False
+        }
+        json_delete_draft_unexisting_requester = {'requester_id' : 3}
+        json_delete_draft_wrong_requester = {'requester_id' : 2}
+        json_delete_draft = {'requester_id' : 1}
         
+        # INTERNAL SERVER ERROR, users ms not available
+ 
+        # failure 500 on updating
+        response = app.put('/messages/drafts/2', json = json_modify_draft)
+        self.assertEqual(response.status_code,500)
+
+        # failure 500 on deleting
+        response = app.delete('/messages/drafts/2', json = json_delete_draft)
+        self.assertEqual(response.status_code,500)
+
+        # mocking users
+        # users 1 and 2 exist
+        responses.add(responses.GET, "%s/users/%s" % (USERS_ENDPOINT, str(1)),
+                  json={'status': 'Current user is present',
+                        'user': user1}, status=200)
+
+        responses.add(responses.GET, "%s/users/%s" % (USERS_ENDPOINT, str(2)),
+                  json={'status': 'Current user is present',
+                        'user': user2}, status=200)
+
+        responses.add(responses.GET, "%s/users/%s" % (USERS_ENDPOINT, str(user2['email'])),
+                  json={'status': 'Current user is present',
+                        'user': user2}, status=200)
+
+        # users 3 doesn't exist
+        responses.add(responses.GET, "%s/users/%s" % (USERS_ENDPOINT, str(3)),
+                  json={'status': 'Current user is present',
+                        'user': user3}, status=404) 
+        responses.add(responses.GET, "%s/users/%s" % (USERS_ENDPOINT, str(user3['email'])),
+                  json={'status': 'Current user is present',
+                        'user': user2}, status=404)
+
+        # failure 404 on updating
+        response = app.put('/messages/drafts/2', json = json_modify_draft_unexisting_requester)
+        self.assertEqual(response.status_code,404)
+
+        # failure 404 on deleting
+        response = app.delete('/messages/drafts/2', json = json_delete_draft_unexisting_requester)
+        self.assertEqual(response.status_code,404)
+
+        # failure 403 on updating when the user is not the sender of draft
+        response = app.put('/messages/drafts/2', json = json_modify_draft_wrong_requester)
+        self.assertEqual(response.status_code,403)
+
+        # failure 403 on deleting when the user is not the sender of draft
+        response = app.delete('/messages/drafts/2', json = json_delete_draft_wrong_requester)
+        self.assertEqual(response.status_code,403)
+
+        # failure 500 without having blacklist ms available
+        response = app.put('/messages/drafts/2', json = json_modify_draft)
+        self.assertEqual(response.status_code,500)
+
+        # mocking blacklist
+        responses.add(responses.GET, "%s/blacklist/" % (BLACKLIST_ENDPOINT),
+        json={'blacklist': [40,45,56], "description": "Blacklist successfully retrieved",
+                    "status": "success"}, status=200)
+        
+        # success on updating n.1
+        response = app.put('/messages/drafts/2', json = json_modify_draft)
+        self.assertEqual(response.status_code,200)
+
+        json_modify_draft = {
+            'requester_id': user1['id'],
+            'content' : 'testing!',
+            'deliver_time' : '2025-01-01 15:00',
+            'recipients' : [user3['email']],
+            'new_image': '',
+            'delete_image':False,
+            'is_sent': False
+        }
+
+        # failure 404 not found recipient
+        response = app.put('/messages/drafts/2', json = json_modify_draft)
+        self.assertEqual(response.status_code,404)
+
+        # success on update with a new recipient
+        user4 = {
+            'id': 3,
+            'email': 'prova4@mail.com',
+            'firstname': 'Piersilvio',
+            'lastname': 'Berlusconi',
+            'date_of_birth': '1969-04-28',
+            'lottery_points': 0,
+            'has_picture': False,
+            'is_active': True,
+            'content_filter_enabled': False
+        }
+        
+        json_modify_draft = {
+            'requester_id': user1['id'],
+            'content' : 'two recipient update test!',
+            'deliver_time' : '2025-01-01 15:00',
+            'recipients' : [user2['email'], user4['email']],
+            'new_image': '',
+            'delete_image':False,
+            'is_sent': False
+        }
+
+
+        responses.add(responses.GET, "%s/users/%s" % (USERS_ENDPOINT, str(4)),
+                  json={'status': 'Current user is present',
+                        'user': user2}, status=200)
+
+        responses.add(responses.GET, "%s/users/%s" % (USERS_ENDPOINT, str(user4['email'])),
+                  json={'status': 'Current user is present',
+                        'user': user2}, status=200)
+
+        # success on updating n.2
+        response = app.put('/messages/drafts/2', json = json_modify_draft)
+        self.assertEqual(response.status_code,200)
+
         with tested_app.app_context():
             from mib import db
-            from mib.models import Message
+            from mib.models import Message,Message_Recipient
             
-            for message in db.session.query(Message).all():
-                print(message.serialize())
+            message= db.session.query(Message).filter(Message.id==2).first()
+            message_recipient = db.session.query(Message_Recipient).filter(Message_Recipient.id==2).all()
+            print(message.serialize())
+            for mr in message_recipient:
+                print(mr.serialize()) 
 
     @responses.activate
     def test_05_delete_pending_message(self):
