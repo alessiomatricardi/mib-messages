@@ -256,7 +256,7 @@ class ResourcesTest(unittest.TestCase):
                   json={'status': 'Current user is present',
                         'user': user2}, status=200)
 
-        # user 3 exists
+        # mock blacklist
         responses.add(responses.GET, "%s/blacklist" % (BLACKLIST_ENDPOINT),
                   json={'blacklist': [40,45,56]}, status=200)
 

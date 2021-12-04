@@ -114,7 +114,7 @@ class MessageLogic:
 
 
     @staticmethod
-    def get_draft_message(message: Message, requester: User):
+    def get_draft_message(message: Message, requester : User):
 
         requester_id = requester.id
 

@@ -851,12 +851,22 @@ def modify_draft_message(message_id):
 
     # TODO TODO TODO GUARDA NEW MESSAGE COME E' STRUTTURATO
 
-    # TODO SUPPORT RESET IMAGE
-    delete_image = False
+    # TODO SUPPORT IMAGE DELETION
+    '''
+    An user can decide to delete current attachment OR to replace it with another one
+    They are mutual exclusive but, in case of wrong configuration made
+    by the Gateway (delete=True and image provided), image deletion has the precedence
+    Note that if delete_image=False and new_image = '' -> keep current attachment
+    '''
+    delete_image = False # TODO REMOVE THIS
+    new_image = ''
     if delete_image:
         # TODO REMOVE ATTACHMENT
         # TODO REMOVE FOLDER STATIC/ATTACHMENTS/<MESSAGE_ID>
         pass
+    elif new_image != '':
+        pass
+        # TODO replace old attachment with the new one
     
     # set the message as sent
     # The message is in 'pending' status by now
