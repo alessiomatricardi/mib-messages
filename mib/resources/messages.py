@@ -9,6 +9,7 @@ import datetime
 import os
 from mib.logic.message_logic import MessageLogic
 import ast
+from mib.logic.user import User
 
 
 USERS_ENDPOINT = app.config['USERS_MS_URL']
@@ -61,16 +62,16 @@ def new_message():
                                     timeout=REQUESTS_TIMEOUT_SECONDS,
                                     json=data)
         if response.status_code != 200:
-                
-                return response.json(), response.status_code
+
+            return response.json(), response.status_code
 
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
-            response_object = {
-                'status': 'failure',
-                'description': 'Error in retrieving blacklist',
-            }
-            return jsonify(response_object), 500
-    
+        response_object = {
+            'status': 'failure',
+            'description': 'Error in retrieving blacklist',
+        }
+        return jsonify(response_object), 500
+
     valid_recipient_ids = []
 
     # checks on recipients
@@ -78,21 +79,21 @@ def new_message():
 
         # checking recipient availability
         try:
-            
+
             # checking that the recipient's email corresponds to an existing user
             response = requests.get("%s/users/%s" % (USERS_ENDPOINT, str(recipient_email)),
                                     timeout=REQUESTS_TIMEOUT_SECONDS)
 
             if response.status_code != 200:
-                
+
                 return response.json(), response.status_code
 
             # retrieve user data
             recipient_user = response.json()['user']
-            
+
             # checking that the retrieved user corresponds to an available one
             if not recipient_user['is_active'] or recipient_user['id'] in ast.literal_eval(requester_blacklist.json()['blacklist']):
-                
+
                 return response.json(), 401
 
         except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
@@ -104,7 +105,7 @@ def new_message():
 
         # the current recipient user passed all checks
         valid_recipient_ids.append(recipient_user['id'])
-    
+
 
     # creating message after passing all checks
     message = Message()
@@ -146,7 +147,6 @@ def new_message():
     return jsonify(response_object), 201
 
 
-
 # READ OPERATIONS
 
 
@@ -163,8 +163,12 @@ def get_received_bottlebox():
                                 json=data)
 
         if response.status_code != 200:
-            
+
             return response.json(), response.status_code
+
+        # build user object from json
+        requester_json = response.json()['user']
+        requester = User.build_from_json(requester_json)
 
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
         response_object = {
@@ -181,7 +185,7 @@ def get_received_bottlebox():
 
     for message in messages:
         # get all information we need
-        message_json, status_code = MessageLogic.get_received_message(message, requester_id)
+        message_json, status_code = MessageLogic.get_received_message(message, requester)
 
         # check status code
         if status_code == 200:
@@ -228,8 +232,12 @@ def get_draft_bottlebox():
                                 json=data)
 
         if response.status_code != 200:
-            
+
             return response.json(), response.status_code
+
+        # build user object from json
+        requester_json = response.json()['user']
+        requester = User.build_from_json(requester_json)
 
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
         response_object = {
@@ -246,7 +254,7 @@ def get_draft_bottlebox():
 
     for message in messages:
         # get all information we need
-        message_json, status_code = MessageLogic.get_draft_message(message, requester_id)
+        message_json, status_code = MessageLogic.get_draft_message(message, requester)
 
         # check status code
         if status_code == 200:
@@ -295,6 +303,10 @@ def get_pending_bottlebox():
         if response.status_code != 200:
             
             return response.json(), response.status_code
+        
+        # build user object from json
+        requester_json = response.json()['user']
+        requester = User.build_from_json(requester_json)
 
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
         response_object = {
@@ -311,7 +323,7 @@ def get_pending_bottlebox():
 
     for message in messages:
         # get all information we need
-        message_json, status_code = MessageLogic.get_pending_or_delivered_message(message, requester_id)
+        message_json, status_code = MessageLogic.get_pending_or_delivered_message(message, requester)
 
         # check status code
         if status_code == 200:
@@ -360,6 +372,10 @@ def get_delivered_bottlebox():
         if response.status_code != 200:
             
             return response.json(), response.status_code
+        
+        # build user object from json
+        requester_json = response.json()['user']
+        requester = User.build_from_json(requester_json)
 
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
         response_object = {
@@ -376,8 +392,7 @@ def get_delivered_bottlebox():
 
     for message in messages:
         # get all information we need
-        message_json, status_code = MessageLogic.get_pending_or_delivered_message(
-            message, requester_id)
+        message_json, status_code = MessageLogic.get_pending_or_delivered_message(message, requester)
 
         # check status code
         if status_code == 200:
@@ -430,6 +445,10 @@ def get_received_message(message_id):
         if response.status_code != 200:
             
             return response.json(), response.status_code
+        
+        # build user object from json
+        requester_json = response.json()['user']
+        requester = User.build_from_json(requester_json)
 
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
         response_object = {
@@ -442,7 +461,7 @@ def get_received_message(message_id):
     # retrieve the message, if exists
     message = MessageManager.retrieve_message_by_id(RECEIVED_LABEL, message_id)
 
-    message_json, status_code = MessageLogic.get_received_message(message, requester_id)
+    message_json, status_code = MessageLogic.get_received_message(message, requester)
 
     if status_code == 403:
         response_object = {
@@ -485,6 +504,10 @@ def get_draft_message(message_id):
         if response.status_code != 200:
             
             return response.json(), response.status_code
+        
+        # build user object from json
+        requester_json = response.json()['user']
+        requester = User.build_from_json(requester_json)
 
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
         response_object = {
@@ -497,7 +520,7 @@ def get_draft_message(message_id):
     # retrieving the message, if exists
     message = MessageManager.retrieve_message_by_id(DRAFT_LABEL, message_id)
 
-    message_json, status_code = MessageLogic.get_draft_message(message, requester_id)
+    message_json, status_code = MessageLogic.get_draft_message(message, requester)
 
     if status_code == 403:
         response_object = {
@@ -541,6 +564,10 @@ def get_pending_message(message_id):
         if response.status_code != 200:
             
             return response.json(), response.status_code
+        
+        # build user object from json
+        requester_json = response.json()['user']
+        requester = User.build_from_json(requester_json)
 
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
         response_object = {
@@ -554,7 +581,7 @@ def get_pending_message(message_id):
     message = MessageManager.retrieve_message_by_id(PENDING_LABEL, message_id)
 
     # since pending and delivered messages are similar, they share most of the code
-    message_json, status_code = MessageLogic.get_pending_or_delivered_message(message, requester_id)
+    message_json, status_code = MessageLogic.get_pending_or_delivered_message(message, requester)
 
     if status_code == 403:
         response_object = {
@@ -598,6 +625,10 @@ def get_delivered_message(message_id):
         if response.status_code != 200:
             
             return response.json(), response.status_code
+        
+        # build user object from json
+        requester_json = response.json()['user']
+        requester = User.build_from_json(requester_json)
 
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
         response_object = {
@@ -611,8 +642,7 @@ def get_delivered_message(message_id):
     message = MessageManager.retrieve_message_by_id(DELIVERED_LABEL, message_id)
 
     # since pending and delivered messages are similar, they share most of the code
-    message_json, status_code = MessageLogic.get_pending_or_delivered_message(
-        message, requester_id)
+    message_json, status_code = MessageLogic.get_pending_or_delivered_message(message, requester)
 
     if status_code == 403:
         response_object = {
@@ -657,7 +687,7 @@ def hide_message(message_id):
                                 json=data)
 
         if response.status_code != 200:
-            
+
             return response.json(), response.status_code
 
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
@@ -709,7 +739,7 @@ def report_message(message_id):
                                 json=data)
 
         if response.status_code != 200:
-            
+
             return response.json(), response.status_code
 
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
@@ -769,7 +799,7 @@ def modify_draft_message():
                                 json=data)
 
         if response.status_code != 200:
-            
+
             return response.json(), response.status_code
 
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
@@ -802,7 +832,7 @@ def delete_draft_message(message_id):
                                 json=data)
 
         if response.status_code != 200:
-            
+
             return response.json(), response.status_code
 
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
@@ -833,7 +863,7 @@ def delete_pending_message(message_id):
                                 json=data)
 
         if response.status_code != 200:
-            
+
             return response.json(), response.status_code
 
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
