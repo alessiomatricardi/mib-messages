@@ -841,6 +841,7 @@ components:
         - recipients
         - new_image
         - delete_image
+        - is_sent
       type: object
       properties:
         requester_id:
@@ -867,7 +868,9 @@ components:
         delete_image:
           type: boolean
           description: True if the actual attachment have to be deleted
-    
+        is_sent:
+          type: boolean
+          description: True if the draft should be sent
     
     ReceivedMessage:
       required:

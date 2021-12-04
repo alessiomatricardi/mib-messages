@@ -109,7 +109,7 @@ class MessageManager(Manager):
 
     @staticmethod
     def update_message(message : Message):
-        Manager.update(message)
+        Manager.update(message=message)
 
     @staticmethod
     def set_message_as_read(message_recipient : Message_Recipient):

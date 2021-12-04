@@ -815,7 +815,7 @@ def report_message(message_id):
     return jsonify(response_object), 200
 
 
-def modify_draft_message():
+def modify_draft_message(message_id):
 
     # get info about the requester
     data = request.get_json()
@@ -826,6 +826,7 @@ def modify_draft_message():
     new_image = data.get('new_image')
     # TODO SUPPORT IT
     delete_image = data.get('delete_image')
+    is_sent = data.get('is_sent')
 
     # check if the requester_id exists
     try:
@@ -845,6 +846,8 @@ def modify_draft_message():
         }
         return jsonify(response_object), 500
 
+    draft_message = MessageManager.retrieve_message_by_id(DRAFT_LABEL, message_id)
+
 
     # TODO TODO TODO GUARDA NEW MESSAGE COME E' STRUTTURATO
 
@@ -855,6 +858,11 @@ def modify_draft_message():
         # TODO REMOVE FOLDER STATIC/ATTACHMENTS/<MESSAGE_ID>
         pass
     
+    # set the message as sent
+    # The message is in 'pending' status by now
+    if is_sent:
+        draft_message.is_sent = True
+        MessageManager.update_message(draft_message)
 
 
 # DELETE OPERATIONS
