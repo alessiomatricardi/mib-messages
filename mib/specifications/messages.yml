@@ -19,7 +19,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Message'
+              $ref: '#/components/schemas/NewMessage'
       responses:
         201:
           description: Message correctly created
@@ -452,7 +452,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Message'
+              $ref: '#/components/schemas/ModifiedDraftMessage'
       responses:
         200:
           description: Return message
@@ -798,7 +798,7 @@ components:
           description: message ID
           example: 12
     
-    Message:
+    NewMessage:
       required:
         - requester_id
         - content
@@ -832,6 +832,42 @@ components:
         is_draft:
           type: boolean
           description: Is the message a draft?
+    
+    ModifiedDraftMessage:
+      required:
+        - requester_id
+        - content
+        - deliver_time
+        - recipients
+        - new_image
+        - delete_image
+      type: object
+      properties:
+        requester_id:
+          type: integer
+          format: int64
+          description: user ID
+          example: 1
+        content:
+          type: string
+          description: The content of the message
+        deliver_time:
+          type: string
+          format: date-time
+          description: Datetime to set the delivery time of the message
+        recipients:
+          type: array
+          items:
+            type: string
+            format: email
+        new_image:
+          type: string
+          format: base64
+          description: Message attachment
+        delete_image:
+          type: boolean
+          description: True if the actual attachment have to be deleted
+    
     
     ReceivedMessage:
       required:

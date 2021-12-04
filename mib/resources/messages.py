@@ -820,6 +820,12 @@ def modify_draft_message():
     # get info about the requester
     data = request.get_json()
     requester_id = data.get('requester_id')
+    content = data.get('content')
+    deliver_time = data.get('deliver_time')
+    recipients = data.get('recipients')
+    new_image = data.get('new_image')
+    # TODO SUPPORT IT
+    delete_image = data.get('delete_image')
 
     # check if the requester_id exists
     try:
@@ -842,7 +848,13 @@ def modify_draft_message():
 
     # TODO TODO TODO GUARDA NEW MESSAGE COME E' STRUTTURATO
 
-    pass
+    # TODO SUPPORT RESET IMAGE
+    delete_image = False
+    if delete_image:
+        # TODO REMOVE ATTACHMENT
+        # TODO REMOVE FOLDER STATIC/ATTACHMENTS/<MESSAGE_ID>
+        pass
+    
 
 
 # DELETE OPERATIONS
