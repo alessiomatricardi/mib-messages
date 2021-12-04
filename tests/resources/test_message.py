@@ -148,6 +148,7 @@ class ResourcesTest(unittest.TestCase):
         # creating an app instace to run test activities
         tested_app = create_app()
         USERS_ENDPOINT = tested_app.config['USERS_MS_URL']
+        BLACKLIST_ENDPOINT = tested_app.config['BLACKLIST_MS_URL']
         app = tested_app.test_client()
 
         user1 = {
@@ -256,9 +257,8 @@ class ResourcesTest(unittest.TestCase):
                         'user': user2}, status=200)
 
         # user 3 exists
-        responses.add(responses.GET, "%s/users/%s" % (USERS_ENDPOINT, str(3)),
-                  json={'status': 'Current user is present',
-                        'user': user3}, status=200)
+        responses.add(responses.GET, "%s/blacklist" % (BLACKLIST_ENDPOINT),
+                  json={'blacklist': [40,45,56]}, status=200)
 
         # success
         response = app.get('/bottlebox/pending', json = {'requester_id' : 1})

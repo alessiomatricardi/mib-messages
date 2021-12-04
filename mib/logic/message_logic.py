@@ -129,32 +129,43 @@ class MessageLogic:
 
         recipients_ids = MessageManager.retrieve_message_recipients(message_id)
 
+        blacklist = []
+
+        # retrieve user blacklist
+        try:
+            data = {'requester_id': requester_id}
+            response = requests.get("%s/blacklist" % (BLACKLIST_ENDPOINT),
+                                    timeout=REQUESTS_TIMEOUT_SECONDS,
+                                    json=data)
+
+            if response.status_code != 200:
+                return None, 500
+
+            blacklist = response.json()['blacklist']
+
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+            return None, 500
+
         # API gateway will use this field to render the form
         recipient_emails = []
 
         # checks that already saved recipients are still available (they could have become inactive or blocked/blocking user)
         for recipient_id in recipients_ids:
 
-            recipient_is_in_blacklist = False
-
             # get recipient information
             try:
-                data = {'requester_id': requester_id}
+                data = {'requester_id': recipient_id}
                 response = requests.get("%s/users/%s" % (USERS_ENDPOINT, str(recipient_id)),
                                         timeout=REQUESTS_TIMEOUT_SECONDS,
                                         json=data)
 
-                # if the response code is 403 the recipient is into our blacklist so we have to remove him
-                if response.status_code == 403:
-                    recipient_is_in_blacklist = True
-
-                elif response.status_code != 200:
+                if response.status_code != 200:
                     return None, 500
 
                 recipient_json = response.json()['user']
                 recipient = User.build_from_json(recipient_json)
 
-                if not recipient.is_active or recipient_is_in_blacklist:
+                if not recipient.is_active or recipient_id in blacklist:
                     # remove user from recipients
                     MessageManager.remove_message_recipient(message_id, recipient_id)
                 else:
@@ -188,27 +199,37 @@ class MessageLogic:
 
 
         recipients_ids = MessageManager.retrieve_message_recipients(message.id)
+        
+        blacklist = []
+
+        # retrieve user blacklist
+        try:
+            data = {'requester_id': requester_id}
+            response = requests.get("%s/blacklist" % (BLACKLIST_ENDPOINT),
+                                    timeout=REQUESTS_TIMEOUT_SECONDS,
+                                    json=data)
+
+            if response.status_code != 200:
+                return None, 500
+
+            blacklist = response.json()['blacklist']
+
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+            return None, 500
 
         recipients_list = []
 
         # checks if a recipient has blocked (or has been blocked by) the sender (user who calls this method)
         for recipient_id in recipients_ids:
 
-            recipient_is_in_blacklist = False
-
             # get recipient information
             try:
-                data = {'requester_id': requester_id}
-                response = requests.get("%s/users/%s" %
-                                        (USERS_ENDPOINT, str(recipient_id)),
+                data = {'requester_id': recipient_id}
+                response = requests.get("%s/users/%s" % (USERS_ENDPOINT, str(recipient_id)),
                                         timeout=REQUESTS_TIMEOUT_SECONDS,
                                         json=data)
 
-                # if the response code is 403 the recipient is into our blacklist so we have to remove him
-                if response.status_code == 403:
-                    recipient_is_in_blacklist = True
-
-                elif response.status_code != 200:
+                if response.status_code != 200:
                     return None, 500
 
                 recipient_json = response.json()['user']
@@ -221,7 +242,7 @@ class MessageLogic:
                 user['id'] = recipient.id
                 user['firstname'] = recipient.firstname
                 user['lastname'] = recipient.lastname
-                user['is_in_blacklist'] = recipient_is_in_blacklist
+                user['is_in_blacklist'] = recipient_id in blacklist
 
                 recipients_list.append(user)
 
