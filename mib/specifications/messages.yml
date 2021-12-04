@@ -34,6 +34,19 @@ paths:
                   description:
                     type: string
                     description: "Human readable result"
+        400:
+          description: 'Bad request: the message has no valid recipients'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    description: "It can be failure or success"
+                  description:
+                    type: string
+                    description: "Human readable result"
         404:
           description: User not found
           content:

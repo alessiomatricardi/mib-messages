@@ -8,7 +8,6 @@ from mib.models import Message, Message_Recipient, Report
 import datetime
 import os
 from mib.logic.message_logic import MessageLogic
-import ast
 from mib.logic.user import User
 
 
@@ -34,7 +33,7 @@ def new_message():
     content = data.get('content')
     deliver_time = data.get('deliver_time')
     recipients = data.get('recipients')
-    image = data.get('image') # TODO VALUTARE DI INVIARE NEL CAMPO "FILES" ???
+    img_base64 = data.get('image') # TODO VALUTARE DI INVIARE NEL CAMPO "FILES" ???
     # TODO SEMPRE IMMAGINE: SE FORNITO JSON, VA FORNITO ANCHE IL FORMATO DELL'IMMAGINE (.JPG, .PNG, ....)
     is_draft = data.get('is_draft')
 
@@ -56,14 +55,19 @@ def new_message():
         }
         return jsonify(response_object), 500
 
-    data = {'requester_id': requester_id}
+    blacklist = []
+
+    # retrieve blacklist
     try:
-        requester_blacklist = requests.get("%s/blacklist" % (BLACKLIST_ENDPOINT),
+        data = {'requester_id': requester_id}
+        response = requests.get("%s/blacklist" % (BLACKLIST_ENDPOINT),
                                     timeout=REQUESTS_TIMEOUT_SECONDS,
                                     json=data)
         if response.status_code != 200:
 
             return response.json(), response.status_code
+        
+        blacklist = response.json()['blacklist']
 
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
         response_object = {
@@ -89,12 +93,16 @@ def new_message():
                 return response.json(), response.status_code
 
             # retrieve user data
-            recipient_user = response.json()['user']
+            recipient_json = response.json()['user']
+            recipient = User.build_from_json(recipient_json)
 
             # checking that the retrieved user corresponds to an available one
-            if not recipient_user['is_active'] or recipient_user['id'] in ast.literal_eval(requester_blacklist.json()['blacklist']):
-
-                return response.json(), 401
+            # if not, skip him
+            if not recipient.is_active or recipient.id in blacklist:
+                continue
+            
+            # the current recipient user passed all checks
+            valid_recipient_ids.append(recipient.id)
 
         except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
             response_object = {
@@ -102,9 +110,14 @@ def new_message():
                 'description': 'Error in retrieving user',
             }
             return jsonify(response_object), 500
-
-        # the current recipient user passed all checks
-        valid_recipient_ids.append(recipient_user['id'])
+    
+    # if the message has no recipients, return with an error
+    if len(valid_recipient_ids) == 0:
+        response_object = {
+            'status' : 'failure',
+            'description' : 'Message has no valid recipients'
+        }
+        return jsonify(response_object), 400
 
 
     # creating message after passing all checks
@@ -112,7 +125,7 @@ def new_message():
     message.sender_id = requester_id
     message.content = content
     message.deliver_time = datetime.datetime.fromisoformat(deliver_time)
-    message.image = image  #TODO VALUTARE SE FARLO DIVENTARE BOOLEANO
+    message.image = img_base64  #TODO VALUTARE SE FARLO DIVENTARE BOOLEANO
     if not is_draft:
         # save message as pending
         message.is_sent = True
@@ -133,7 +146,7 @@ def new_message():
     # TODO IMPORTANTE!!!!!!!!!
     # CARTELLA ATTACHMENTS GIA' CREATA IN __INIT__.PY
 
-    if image is not '':
+    if img_base64 is not '':
         # create a subdirectory of 'attachments' having as name the id of the message
         os.mkdir(os.path.join(os.getcwd(), 'mib', 'static', 'attachments', str(id)))
 

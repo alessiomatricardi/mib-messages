@@ -95,7 +95,7 @@ class ResourcesTest(unittest.TestCase):
 
         responses.add(responses.GET, "%s/blacklist" % (BLACKLIST_ENDPOINT),
                 json={
-                    "blacklist": "[3]",
+                    "blacklist": [3],
                     "description": "Blacklist successfully retrieved",
                     "status": "success"
                 }, status=200)
@@ -120,13 +120,13 @@ class ResourcesTest(unittest.TestCase):
 
         responses.add(responses.GET, "%s/blacklist" % (BLACKLIST_ENDPOINT),
                 json={
-                    "blacklist": "[3]",
+                    "blacklist": [3],
                     "description": "Blacklist successfully retrieved",
                     "status": "success"
                 }, status=200)
 
         response = app.post('/messages', json = new_wrong_message_data)
-        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.status_code, 400)
 
         # this succeeds
         responses.add(responses.GET, "%s/users/%s" % (USERS_ENDPOINT, str(json_recipient_email)),
@@ -134,7 +134,7 @@ class ResourcesTest(unittest.TestCase):
 
         responses.add(responses.GET, "%s/blacklist" % (BLACKLIST_ENDPOINT),
                 json={
-                    "blacklist": "[3]",
+                    "blacklist": [3],
                     "description": "Blacklist successfully retrieved",
                     "status": "success"
                 }, status=200)
