@@ -45,10 +45,7 @@ def new_message():
                                 json=data)
 
         if response.status_code != 200:
-            response_object = {
-                'status': 'failure',
-                'description': 'Error in retrieving user',
-            }
+
             return response.json(), response.status_code
 
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
@@ -64,10 +61,7 @@ def new_message():
                                     timeout=REQUESTS_TIMEOUT_SECONDS,
                                     json=data)
         if response.status_code != 200:
-                response_object = {
-                    'status': 'failure',
-                    'description': 'Error in retrieving blacklist',
-                }
+                
                 return response.json(), response.status_code
 
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
@@ -90,21 +84,15 @@ def new_message():
                                     timeout=REQUESTS_TIMEOUT_SECONDS)
 
             if response.status_code != 200:
-                response_object = {
-                    'status': 'failure',
-                    'description': 'Error in retrieving user',
-                }
+                
                 return response.json(), response.status_code
 
             # retrieve user data
             recipient_user = response.json()['user']
             
             # checking that the retrieved user corresponds to an available one
-            if recipient_user['is_active'] == False or recipient_user['is_admin'] == True or recipient_user['id'] in ast.literal_eval(requester_blacklist.json()['blacklist']):
-                response_object = {
-                    'status': 'failure',
-                    'description': 'Recipient not available',
-                }
+            if not recipient_user['is_active'] or recipient_user['id'] in ast.literal_eval(requester_blacklist.json()['blacklist']):
+                
                 return response.json(), 401
 
         except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
@@ -152,10 +140,10 @@ def new_message():
         pass
 
     response_object = {
-                    'status': 'success',
-                    'description': 'Message and recipient(s) created',
-                }
-    return response.json(), 201
+        'status': 'success',
+        'description': 'Message created',
+    }
+    return jsonify(response_object), 201
 
 
 
@@ -175,10 +163,7 @@ def get_received_bottlebox():
                                 json=data)
 
         if response.status_code != 200:
-            response_object = {
-                'status': 'failure',
-                'description': 'Error in retrieving user',
-            }
+            
             return response.json(), response.status_code
 
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
@@ -243,10 +228,7 @@ def get_draft_bottlebox():
                                 json=data)
 
         if response.status_code != 200:
-            response_object = {
-                'status': 'failure',
-                'description': 'Error in retrieving user',
-            }
+            
             return response.json(), response.status_code
 
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
@@ -311,10 +293,7 @@ def get_pending_bottlebox():
                                 json=data)
 
         if response.status_code != 200:
-            response_object = {
-                'status': 'failure',
-                'description': 'Error in retrieving user',
-            }
+            
             return response.json(), response.status_code
 
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
@@ -379,10 +358,7 @@ def get_delivered_bottlebox():
                                 json=data)
 
         if response.status_code != 200:
-            response_object = {
-                'status': 'failure',
-                'description': 'Error in retrieving user',
-            }
+            
             return response.json(), response.status_code
 
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
@@ -452,10 +428,7 @@ def get_received_message(message_id):
                                 json=data)
 
         if response.status_code != 200:
-            response_object = {
-                'status': 'failure',
-                'description': 'Error in retrieving user',
-            }
+            
             return response.json(), response.status_code
 
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
@@ -510,10 +483,7 @@ def get_draft_message(message_id):
                                 json=data)
 
         if response.status_code != 200:
-            response_object = {
-                'status': 'failure',
-                'description': 'Error in retrieving user',
-            }
+            
             return response.json(), response.status_code
 
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
@@ -569,10 +539,7 @@ def get_pending_message(message_id):
                                 json=data)
 
         if response.status_code != 200:
-            response_object = {
-                'status': 'failure',
-                'description': 'Error in retrieving user',
-            }
+            
             return response.json(), response.status_code
 
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
@@ -629,10 +596,7 @@ def get_delivered_message(message_id):
                                 json=data)
 
         if response.status_code != 200:
-            response_object = {
-                'status': 'failure',
-                'description': 'Error in retrieving user',
-            }
+            
             return response.json(), response.status_code
 
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
@@ -693,10 +657,7 @@ def hide_message(message_id):
                                 json=data)
 
         if response.status_code != 200:
-            response_object = {
-                'status': 'failure',
-                'description': 'Error in retrieving user',
-            }
+            
             return response.json(), response.status_code
 
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
@@ -748,10 +709,7 @@ def report_message(message_id):
                                 json=data)
 
         if response.status_code != 200:
-            response_object = {
-                'status': 'failure',
-                'description': 'Error in retrieving user',
-            }
+            
             return response.json(), response.status_code
 
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
@@ -811,10 +769,7 @@ def modify_draft_message():
                                 json=data)
 
         if response.status_code != 200:
-            response_object = {
-                'status': 'failure',
-                'description': 'Error in retrieving user',
-            }
+            
             return response.json(), response.status_code
 
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
@@ -847,10 +802,7 @@ def delete_draft_message(message_id):
                                 json=data)
 
         if response.status_code != 200:
-            response_object = {
-                'status': 'failure',
-                'description': 'Error in retrieving user',
-            }
+            
             return response.json(), response.status_code
 
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
@@ -881,10 +833,7 @@ def delete_pending_message(message_id):
                                 json=data)
 
         if response.status_code != 200:
-            response_object = {
-                'status': 'failure',
-                'description': 'Error in retrieving user',
-            }
+            
             return response.json(), response.status_code
 
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
