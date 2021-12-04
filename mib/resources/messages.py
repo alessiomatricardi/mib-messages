@@ -9,6 +9,9 @@ import datetime
 import os
 from mib.logic.message_logic import MessageLogic
 from mib.logic.user import User
+import base64
+from io import BytesIO
+from PIL import Image
 
 
 USERS_ENDPOINT = app.config['USERS_MS_URL']
@@ -31,8 +34,8 @@ def new_message():
     content = data.get('content')
     deliver_time = data.get('deliver_time')
     recipients = data.get('recipients')
-    img_base64 = data.get('image') # TODO VALUTARE DI INVIARE NEL CAMPO "FILES" ???
-    # TODO SEMPRE IMMAGINE: SE FORNITO JSON, VA FORNITO ANCHE IL FORMATO DELL'IMMAGINE (.JPG, .PNG, ....)
+    img_base64 = data.get('image')
+    image_filename = data.get('image_filename')
     is_draft = data.get('is_draft')
 
     # check if the requester_id exists
@@ -148,18 +151,19 @@ def new_message():
         # create a subdirectory of 'attachments' having as name the id of the message
         os.mkdir(os.path.join(os.getcwd(), 'mib', 'static', 'attachments', str(id)))
 
-        # TODO save attachment
+        # save attachment
         
         # decoding image
-        #img_data = BytesIO(base64.b64decode(img_base64))
+        img_data = BytesIO(base64.b64decode(img_base64))
 
         # store it, in case of a previously inserted image it's going to be overwritten
         try:
 
-            #img = Image.open(img_data)
+            img = Image.open(img_data)
             path_to_save = os.path.join(os.getcwd(), 'mib', 'static', 'attachments',
-                                    str(id), 'attachment' + '.png')
-            #img.save(path_to_save, "JPEG", quality=100, subsampling=0)
+                                    str(id), image_filename)
+            
+            img.save(path_to_save, quality=100, subsampling=0)
 
         except Exception:
             response_object = {
@@ -821,7 +825,8 @@ def modify_draft_message(message_id):
     content = data.get('content')
     deliver_time = data.get('deliver_time')
     recipients = data.get('recipients')
-    new_image = data.get('new_image')
+    new_img_base64 = data.get('new_image')
+    new_image_filename = data.get('new_image_filename')
     # TODO SUPPORT IT
     delete_image = data.get('delete_image')
     is_sent = data.get('is_sent')
@@ -856,15 +861,56 @@ def modify_draft_message(message_id):
     by the Gateway (delete=True and image provided), image deletion has the precedence
     Note that if delete_image=False and new_image = '' -> keep current attachment
     '''
-    delete_image = False # TODO REMOVE THIS
-    new_image = ''
+    basepath = os.path.join(os.getcwd(), 'mib', 'static', 'attachments', str(id))
+
+    # remove attachment, if present
     if delete_image:
-        # TODO REMOVE ATTACHMENT
-        # TODO REMOVE FOLDER STATIC/ATTACHMENTS/<MESSAGE_ID>
+        if os.path.exists(basepath):
+            for file in os.listdir(basepath):
+                filename = os.path.join(basepath, file)
+                os.remove(filename)
+
+            # remove folder
+            os.rmdir(basepath)
         pass
-    elif new_image != '':
-        pass
-        # TODO replace old attachment with the new one
+    elif new_img_base64 != '' and new_image_filename != '':
+        # replace old attachment (if present) with the new one
+
+        
+        
+        # if not exists, create a subdirectory of 'attachments' having as name the id of the message
+        if not os.path.exists(basepath):
+            os.mkdir(basepath)
+        else:
+            # if exists, mark old attachment for future deletion
+            new_filename = os.path.join(basepath, "to_be_removed.image")
+            # for loop but should exist only one file inside this folder
+            for file in os.listdir(basepath):
+                old_filename = os.path.join(basepath, file)
+                if os.path.isfile(old_filename):
+                    os.rename(old_filename, new_filename)
+
+        # save attachment
+        
+        # decoding image
+        img_data = BytesIO(base64.b64decode(new_img_base64))
+
+        # store it, in case of a previously inserted image with the same name
+        # it's going to be overwritten
+        try:
+
+            img = Image.open(img_data)
+            path_to_save = os.path.join(path, new_image_filename)
+            
+            img.save(path_to_save, quality=100, subsampling=0)
+
+        except Exception:
+            response_object = {
+                'status': 'failure',
+                'description': 'Error in saving the image',
+            }
+            return jsonify(response_object), 500
+
     
     # set the message as sent
     # The message is in 'pending' status by now

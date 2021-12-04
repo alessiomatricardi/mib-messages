@@ -649,7 +649,6 @@ paths:
         default:
           description: An error occured while deleting the message
    
-          
   /messages/delivered/{message_id}:
     get:
       tags: [ Messages ]
@@ -805,6 +804,7 @@ components:
         - deliver_time
         - recipients
         - image
+        - image_filename
         - is_draft
       type: object
       properties:
@@ -828,7 +828,10 @@ components:
         image:
           type: string
           format: base64
-          description: Message attachment
+          description: Base64 rapresentation of the message attachment
+        image_filename:
+          type: string
+          description: Image secure filename
         is_draft:
           type: boolean
           description: Is the message a draft?
@@ -840,6 +843,7 @@ components:
         - deliver_time
         - recipients
         - new_image
+        - new_image_filename
         - delete_image
         - is_sent
       type: object
@@ -864,7 +868,10 @@ components:
         new_image:
           type: string
           format: base64
-          description: Message attachment
+          description: Base64 rapresentation of the message attachment
+        new_image_filename:
+          type: string
+          description: Image secure filename
         delete_image:
           type: boolean
           description: True if the actual attachment have to be deleted
