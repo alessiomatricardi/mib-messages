@@ -59,10 +59,8 @@ class MessageLogic:
 
             MessageManager.set_message_as_read(message_recipient)
 
-            # TODO interazione con user per ricavare il nome dell'utente recipient
             email_message = "Subject: Message notification\n\nThe message you sent to %s %s (%s) has been read." \
                 % (requester.firstname, requester.lastname, requester.email)
-
 
             email = sender.email
 

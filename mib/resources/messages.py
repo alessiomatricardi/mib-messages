@@ -20,11 +20,9 @@ DRAFT_LABEL = 'drafts'
 PENDING_LABEL = 'pending'
 DELIVERED_LABEL = 'delivered'
 
-'''
-TODO AGGIUNGERE GESTORE RICHIESTE VERSO ALTRI MICROSERVIZI PER MIGLIORARE LEGGIBILITA` CODICE
-'''
 
 # CREATE OPERATIONS
+
 
 def new_message():
     # get info about the requester

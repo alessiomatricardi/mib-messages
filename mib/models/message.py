@@ -33,10 +33,6 @@ class Message(db.Model):
     def set_content(self, content):
         self.content = content
 
-    #
-    # TODO add setter methods to set the deliver_time and the is_sent variables
-    #
-
     def get_id(self):
         return self.id
     

@@ -6,7 +6,7 @@ class Report(db.Model):
     # The name of the table that we explicitly set
     __tablename__ = 'Report'
 
-    # A list of fields to be serialized TODO da fare
+    # A list of fields to be serialized
     SERIALIZE_LIST = ['message_id', 'reporting_user_id', 'report_time']
 
     reporting_user_id = db.Column(db.Integer, nullable=False)
