@@ -217,6 +217,20 @@ class ResourcesTest(unittest.TestCase):
         # failure wrong label
         response = app.get('/bottlebox/not_a_label', json = {'requester_id' : 1})
         self.assertEqual(response.status_code,404)
+        
+        # DELIVERED BOTTLEBOX
+        # failure user not found
+        response = app.get('/bottlebox/delivered', json = {'requester_id' : 2})
+        self.assertEqual(response.status_code, 404)
+
+        # success 
+        response = app.get('/bottlebox/delivered', json = {'requester_id' : 1})
+        self.assertEqual(response.status_code, 200)
+        
+        # RECEIVED BOTTLEBOX
+        # failure user not found
+        response = app.get('/bottlebox/received', json = {'requester_id' : 2})
+        self.assertEqual(response.status_code, 404)
 
         # DELIVERED BOTTLEBOX
         # failure user not found
