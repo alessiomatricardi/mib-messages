@@ -8,7 +8,6 @@ from mib.models import Message, Message_Recipient, Report
 import datetime
 import os
 from mib.logic.message_logic import MessageLogic
-import ast
 from mib.logic.user import User
 
 
@@ -21,11 +20,9 @@ DRAFT_LABEL = 'drafts'
 PENDING_LABEL = 'pending'
 DELIVERED_LABEL = 'delivered'
 
-'''
-TODO AGGIUNGERE GESTORE RICHIESTE VERSO ALTRI MICROSERVIZI PER MIGLIORARE LEGGIBILITA` CODICE
-'''
 
 # CREATE OPERATIONS
+
 
 def new_message():
     # get info about the requester
@@ -34,7 +31,7 @@ def new_message():
     content = data.get('content')
     deliver_time = data.get('deliver_time')
     recipients = data.get('recipients')
-    image = data.get('image') # TODO VALUTARE DI INVIARE NEL CAMPO "FILES" ???
+    img_base64 = data.get('image') # TODO VALUTARE DI INVIARE NEL CAMPO "FILES" ???
     # TODO SEMPRE IMMAGINE: SE FORNITO JSON, VA FORNITO ANCHE IL FORMATO DELL'IMMAGINE (.JPG, .PNG, ....)
     is_draft = data.get('is_draft')
 
@@ -56,14 +53,19 @@ def new_message():
         }
         return jsonify(response_object), 500
 
-    data = {'requester_id': requester_id}
+    blacklist = []
+
+    # retrieve blacklist
     try:
-        requester_blacklist = requests.get("%s/blacklist" % (BLACKLIST_ENDPOINT),
+        data = {'requester_id': requester_id}
+        response = requests.get("%s/blacklist" % (BLACKLIST_ENDPOINT),
                                     timeout=REQUESTS_TIMEOUT_SECONDS,
                                     json=data)
         if response.status_code != 200:
 
             return response.json(), response.status_code
+        
+        blacklist = response.json()['blacklist']
 
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
         response_object = {
@@ -89,12 +91,16 @@ def new_message():
                 return response.json(), response.status_code
 
             # retrieve user data
-            recipient_user = response.json()['user']
+            recipient_json = response.json()['user']
+            recipient = User.build_from_json(recipient_json)
 
             # checking that the retrieved user corresponds to an available one
-            if not recipient_user['is_active'] or recipient_user['id'] in ast.literal_eval(requester_blacklist.json()['blacklist']):
-
-                return response.json(), 401
+            # if not, skip him
+            if not recipient.is_active or recipient.id in blacklist:
+                continue
+            
+            # the current recipient user passed all checks
+            valid_recipient_ids.append(recipient.id)
 
         except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
             response_object = {
@@ -102,9 +108,14 @@ def new_message():
                 'description': 'Error in retrieving user',
             }
             return jsonify(response_object), 500
-
-        # the current recipient user passed all checks
-        valid_recipient_ids.append(recipient_user['id'])
+    
+    # if the message has no recipients, return with an error
+    if len(valid_recipient_ids) == 0:
+        response_object = {
+            'status' : 'failure',
+            'description' : 'Message has no valid recipients'
+        }
+        return jsonify(response_object), 400
 
 
     # creating message after passing all checks
@@ -112,7 +123,7 @@ def new_message():
     message.sender_id = requester_id
     message.content = content
     message.deliver_time = datetime.datetime.fromisoformat(deliver_time)
-    message.image = image  #TODO VALUTARE SE FARLO DIVENTARE BOOLEANO
+    message.image = img_base64  #TODO VALUTARE SE FARLO DIVENTARE BOOLEANO
     if not is_draft:
         # save message as pending
         message.is_sent = True
@@ -133,12 +144,29 @@ def new_message():
     # TODO IMPORTANTE!!!!!!!!!
     # CARTELLA ATTACHMENTS GIA' CREATA IN __INIT__.PY
 
-    if image is not '':
+    if img_base64 is not '':
         # create a subdirectory of 'attachments' having as name the id of the message
         os.mkdir(os.path.join(os.getcwd(), 'mib', 'static', 'attachments', str(id)))
 
-        # TODO SALVA IMMAGINE
-        pass
+        # TODO save attachment
+        
+        # decoding image
+        #img_data = BytesIO(base64.b64decode(img_base64))
+
+        # store it, in case of a previously inserted image it's going to be overwritten
+        try:
+
+            #img = Image.open(img_data)
+            path_to_save = os.path.join(os.getcwd(), 'mib', 'static', 'attachments',
+                                    str(id), 'attachment' + '.png')
+            #img.save(path_to_save, "JPEG", quality=100, subsampling=0)
+
+        except Exception:
+            response_object = {
+                'status': 'failure',
+                'description': 'Error in saving the image',
+            }
+            return jsonify(response_object), 500
 
     response_object = {
         'status': 'success',
@@ -785,11 +813,18 @@ def report_message(message_id):
     return jsonify(response_object), 200
 
 
-def modify_draft_message():
+def modify_draft_message(message_id):
 
     # get info about the requester
     data = request.get_json()
     requester_id = data.get('requester_id')
+    content = data.get('content')
+    deliver_time = data.get('deliver_time')
+    recipients = data.get('recipients')
+    new_image = data.get('new_image')
+    # TODO SUPPORT IT
+    delete_image = data.get('delete_image')
+    is_sent = data.get('is_sent')
 
     # check if the requester_id exists
     try:
@@ -809,10 +844,33 @@ def modify_draft_message():
         }
         return jsonify(response_object), 500
 
+    draft_message = MessageManager.retrieve_message_by_id(DRAFT_LABEL, message_id)
+
 
     # TODO TODO TODO GUARDA NEW MESSAGE COME E' STRUTTURATO
 
-    pass
+    # TODO SUPPORT IMAGE DELETION
+    '''
+    An user can decide to delete current attachment OR to replace it with another one
+    They are mutual exclusive but, in case of wrong configuration made
+    by the Gateway (delete=True and image provided), image deletion has the precedence
+    Note that if delete_image=False and new_image = '' -> keep current attachment
+    '''
+    delete_image = False # TODO REMOVE THIS
+    new_image = ''
+    if delete_image:
+        # TODO REMOVE ATTACHMENT
+        # TODO REMOVE FOLDER STATIC/ATTACHMENTS/<MESSAGE_ID>
+        pass
+    elif new_image != '':
+        pass
+        # TODO replace old attachment with the new one
+    
+    # set the message as sent
+    # The message is in 'pending' status by now
+    if is_sent:
+        draft_message.is_sent = True
+        MessageManager.update_message(draft_message)
 
 
 # DELETE OPERATIONS

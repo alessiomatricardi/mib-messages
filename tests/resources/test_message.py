@@ -95,7 +95,7 @@ class ResourcesTest(unittest.TestCase):
 
         responses.add(responses.GET, "%s/blacklist" % (BLACKLIST_ENDPOINT),
                 json={
-                    "blacklist": "[3]",
+                    "blacklist": [3],
                     "description": "Blacklist successfully retrieved",
                     "status": "success"
                 }, status=200)
@@ -120,13 +120,13 @@ class ResourcesTest(unittest.TestCase):
 
         responses.add(responses.GET, "%s/blacklist" % (BLACKLIST_ENDPOINT),
                 json={
-                    "blacklist": "[3]",
+                    "blacklist": [3],
                     "description": "Blacklist successfully retrieved",
                     "status": "success"
                 }, status=200)
 
         response = app.post('/messages', json = new_wrong_message_data)
-        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.status_code, 400)
 
         # this succeeds
         responses.add(responses.GET, "%s/users/%s" % (USERS_ENDPOINT, str(json_recipient_email)),
@@ -134,7 +134,7 @@ class ResourcesTest(unittest.TestCase):
 
         responses.add(responses.GET, "%s/blacklist" % (BLACKLIST_ENDPOINT),
                 json={
-                    "blacklist": "[3]",
+                    "blacklist": [3],
                     "description": "Blacklist successfully retrieved",
                     "status": "success"
                 }, status=200)
@@ -148,6 +148,7 @@ class ResourcesTest(unittest.TestCase):
         # creating an app instace to run test activities
         tested_app = create_app()
         USERS_ENDPOINT = tested_app.config['USERS_MS_URL']
+        BLACKLIST_ENDPOINT = tested_app.config['BLACKLIST_MS_URL']
         app = tested_app.test_client()
 
         user1 = {
@@ -269,10 +270,9 @@ class ResourcesTest(unittest.TestCase):
                   json={'status': 'Current user is present',
                         'user': user2}, status=200)
 
-        # user 3 exists
-        responses.add(responses.GET, "%s/users/%s" % (USERS_ENDPOINT, str(3)),
-                  json={'status': 'Current user is present',
-                        'user': user3}, status=200)
+        # mock blacklist
+        responses.add(responses.GET, "%s/blacklist" % (BLACKLIST_ENDPOINT),
+                  json={'blacklist': [40,45,56]}, status=200)
 
         # success
         response = app.get('/bottlebox/pending', json = {'requester_id' : 1})
