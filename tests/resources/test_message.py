@@ -1,8 +1,8 @@
 import unittest
 from mib import create_app
 import responses
-
-
+from mib import db
+from flask_sqlalchemy import SQLAlchemy
 
 class ResourcesTest(unittest.TestCase):
 
@@ -154,6 +154,26 @@ class ResourcesTest(unittest.TestCase):
         response = app.post('/messages', json = new_draft_message_data)
         self.assertEqual(response.status_code, 201)
 
+        # this succeeds, pending message which is going to be set as delivered
+        new_draft_message_data = {
+            'requester_id': json_sender_id,
+            'content' : 'draft testing!',
+            'deliver_time' : '2021-01-01 15:00',
+            'recipients' : [json_recipient_email],
+            'image': '',
+            'is_draft': False
+        }
+        response = app.post('/messages', json = new_draft_message_data)
+        self.assertEqual(response.status_code, 201)
+
+        with tested_app.app_context():
+            from mib import db
+            from mib.models import Message
+            
+            db.session.query(Message).filter(Message.id==3).update({'is_delivered':True})
+            db.session.commit()
+            
+
     @responses.activate
     def test_02_bottlebox(self):
         # creating an app instace to run test activities
@@ -276,7 +296,7 @@ class ResourcesTest(unittest.TestCase):
 
         # RECEIVED BOTTLEBOX
         # success
-        response = app.get('/bottlebox/received', json = {'requester_id' : 1})
+        response = app.get('/bottlebox/received', json = {'requester_id' : 2})
         self.assertEqual(response.status_code,200) 
 
     @responses.activate
@@ -361,13 +381,13 @@ class ResourcesTest(unittest.TestCase):
        # failure 404 on get_pending
         response = app.get('/messages/pending/1', json = json_unexisting_requester)
         self.assertEqual(response.status_code,404) 
-        # failure 500 on get_delivered
+        # failure 404 on get_delivered
         response = app.get('/messages/delivered/1', json = json_unexisting_requester)
         self.assertEqual(response.status_code,404) 
-        # failure 500 on get_received
+        # failure 404 on get_received
         response = app.get('/messages/received/1', json = json_unexisting_requester)
         self.assertEqual(response.status_code,404) 
-        # failure 500 on get_draft
+        # failure 404 on get_draft
         response = app.get('/messages/drafts/1', json = json_unexisting_requester)
         self.assertEqual(response.status_code,404) 
 
@@ -377,6 +397,14 @@ class ResourcesTest(unittest.TestCase):
 
         # failure on retrieving existing draft message having blacklist ms unavailable
         response = app.get('/messages/drafts/2', json = json_existing_requester)
+        self.assertEqual(response.status_code,500) 
+
+        # failure on retrieving existing delivered message having blacklist ms unavailable
+        response = app.get('/messages/delivered/3', json = json_existing_requester)
+        self.assertEqual(response.status_code,500) 
+
+        # failure on retrieving existing draft message having blacklist ms unavailable
+        response = app.get('/messages/received/3', json = json_existing_requester_not_the_sender)
         self.assertEqual(response.status_code,500) 
 
         # mocking blacklist
@@ -391,12 +419,28 @@ class ResourcesTest(unittest.TestCase):
         response = app.get('/messages/drafts/2', json = json_existing_requester_not_the_sender)
         self.assertEqual(response.status_code,403) 
 
+        # failure on retrieving delivered message having blacklist ms available but requester is not sender
+        response = app.get('/messages/delivered/3', json = json_existing_requester_not_the_sender)
+        self.assertEqual(response.status_code,403) 
+
+        # failure on retrieving received message having blacklist ms available but requester is not recipient
+        response = app.get('/messages/received/3', json = json_existing_requester)
+        self.assertEqual(response.status_code,403) 
+
         # success on retrieving pending message having blacklist ms available
         response = app.get('/messages/pending/1', json = json_existing_requester)
         self.assertEqual(response.status_code,200) 
 
-        # failure on retrieving draft message having blacklist ms available
+        # success on retrieving draft message having blacklist ms available
         response = app.get('/messages/drafts/2', json = json_existing_requester)
+        self.assertEqual(response.status_code,200)
+        
+         # success on retrieving delivered message having blacklist ms available 
+        response = app.get('/messages/delivered/3', json = json_existing_requester)
+        self.assertEqual(response.status_code,200) 
+
+        # success on retrieving received message having blacklist ms available 
+        response = app.get('/messages/received/3', json = json_existing_requester_not_the_sender)
         self.assertEqual(response.status_code,200) 
         
     @responses.activate
@@ -442,6 +486,13 @@ class ResourcesTest(unittest.TestCase):
             'is_active': True,
             'content_filter_enabled': False
         }
+        
+        with tested_app.app_context():
+            from mib import db
+            from mib.models import Message
+            
+            for message in db.session.query(Message).all():
+                print(message.serialize())
 
     @responses.activate
     def test_05_delete_pending_message(self):
