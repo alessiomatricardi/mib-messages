@@ -30,7 +30,7 @@ class ResourcesTest(unittest.TestCase):
         }
 
         user2 = {
-            'id' : 2,
+            'id' : json_recipient_id,
             'email' : 'prova2@mail.com',
             'firstname' : 'Maurizio',
             'lastname' : 'Costanzo',
@@ -128,7 +128,7 @@ class ResourcesTest(unittest.TestCase):
         response = app.post('/messages', json = new_wrong_message_data)
         self.assertEqual(response.status_code, 400)
 
-        # this succeeds
+        # this succeeds, PENDING message
         responses.add(responses.GET, "%s/users/%s" % (USERS_ENDPOINT, str(json_recipient_email)),
                   json={'user': user2}, status=200)
 
@@ -142,6 +142,17 @@ class ResourcesTest(unittest.TestCase):
         response = app.post('/messages', json = new_message_data)
         self.assertEqual(response.status_code, 201)
 
+        # this succeeds, DRAFTS message
+        new_draft_message_data = {
+            'requester_id': json_sender_id,
+            'content' : 'draft testing!',
+            'deliver_time' : '2025-01-01 15:00',
+            'recipients' : [json_recipient_email],
+            'image': '',
+            'is_draft': True
+        }
+        response = app.post('/messages', json = new_draft_message_data)
+        self.assertEqual(response.status_code, 201)
 
     @responses.activate
     def test_02_bottlebox(self):
@@ -224,56 +235,254 @@ class ResourcesTest(unittest.TestCase):
         response = app.get('/bottlebox/delivered', json = {'requester_id' : 2})
         self.assertEqual(response.status_code, 404)
 
-        # success 
-        response = app.get('/bottlebox/delivered', json = {'requester_id' : 1})
-        self.assertEqual(response.status_code, 200)
-        
-        # RECEIVED BOTTLEBOX
-        # failure user not found
-        response = app.get('/bottlebox/received', json = {'requester_id' : 2})
-        self.assertEqual(response.status_code, 404)
-
-        # DELIVERED BOTTLEBOX
-        # failure user not found
-        response = app.get('/bottlebox/delivered', json = {'requester_id' : 2})
-        self.assertEqual(response.status_code, 404)
-
-        # success
-        response = app.get('/bottlebox/delivered', json = {'requester_id' : 1})
-        self.assertEqual(response.status_code, 200)
-
-        # RECEIVED BOTTLEBOX
-        # failure user not found
-        response = app.get('/bottlebox/received', json = {'requester_id' : 2})
-        self.assertEqual(response.status_code, 404)
-
-        # success
-        response = app.get('/bottlebox/received', json = {'requester_id' : 1})
-        self.assertEqual(response.status_code,200)
-
         # DRAFTS BOTTLEBOX
         # failure user not found
         response = app.get('/bottlebox/drafts', json = {'requester_id' : 2})
         self.assertEqual(response.status_code, 404)
 
-        # success
-        response = app.get('/bottlebox/drafts', json = {'requester_id' : 1})
-        self.assertEqual(response.status_code,200)
+        # RECEIVED BOTTLEBOX
+        # failure user not found
+        response = app.get('/bottlebox/received', json = {'requester_id' : 2})
+        self.assertEqual(response.status_code, 404)
 
         # PENDING BOTTLEBOX
         # failure user not found
         response = app.get('/bottlebox/pending', json = {'requester_id' : 2})
         self.assertEqual(response.status_code, 404)
 
+        # mock blacklist
+        responses.add(responses.GET, "%s/blacklist" % (BLACKLIST_ENDPOINT),
+        json={'blacklist': [40,45,56]}, status=200)
+
         # user 2 now exists
         responses.replace(responses.GET, "%s/users/%s" % (USERS_ENDPOINT, str(2)),
                   json={'status': 'Current user is present',
                         'user': user2}, status=200)
 
-        # mock blacklist
-        responses.add(responses.GET, "%s/blacklist" % (BLACKLIST_ENDPOINT),
-                  json={'blacklist': [40,45,56]}, status=200)
+        # DRAFTS BOTTLEBOX
+        # success
+        response = app.get('/bottlebox/drafts', json = {'requester_id' : 1})
+        self.assertEqual(response.status_code,200)
 
+        # PENDING BOTTLEBOX
         # success
         response = app.get('/bottlebox/pending', json = {'requester_id' : 1})
         self.assertEqual(response.status_code, 200)
+
+        # DELIVERED BOTTLEBOX
+        # success 
+        response = app.get('/bottlebox/delivered', json = {'requester_id' : 1})
+        self.assertEqual(response.status_code, 200)
+
+        # RECEIVED BOTTLEBOX
+        # success
+        response = app.get('/bottlebox/received', json = {'requester_id' : 1})
+        self.assertEqual(response.status_code,200) 
+
+    @responses.activate
+    def test_03_get_message_detail(self):
+        # creating an app instace to run test activities
+        tested_app = create_app()
+        USERS_ENDPOINT = tested_app.config['USERS_MS_URL']
+        BLACKLIST_ENDPOINT = tested_app.config['BLACKLIST_MS_URL']
+        app = tested_app.test_client()
+
+        user1 = {
+            'id' : 1,
+            'email' : 'prova@mail.com',
+            'firstname' : 'Maurizio',
+            'lastname' : 'Costanzo',
+            'date_of_birth' : '1938-08-28',
+            'lottery_points' : 0,
+            'has_picture' : False,
+            'is_active' : True,
+            'content_filter_enabled' : False
+        }
+
+        user2 = {
+            'id': 2,
+            'email': 'prova2@mail.com',
+            'firstname': 'Maurizio',
+            'lastname': 'Costanzo',
+            'date_of_birth': '1938-08-28',
+            'lottery_points': 0,
+            'has_picture': False,
+            'is_active': True,
+            'content_filter_enabled': False
+        }
+
+        user3 = {
+            'id': 3,
+            'email': 'prova3@mail.com',
+            'firstname': 'Maurizio',
+            'lastname': 'Costanzo',
+            'date_of_birth': '1938-08-28',
+            'lottery_points': 0,
+            'has_picture': False,
+            'is_active': True,
+            'content_filter_enabled': False
+        }
+
+        # INTERNAL SERVER ERROR, users ms not available
+
+        # failure 500 on get_pending
+        response = app.get('/messages/pending/1', json = {'requester_id' : 1})
+        self.assertEqual(response.status_code,500) 
+        # failure 500 on get_delivered
+        response = app.get('/messages/delivered/1', json = {'requester_id' : 1})
+        self.assertEqual(response.status_code,500) 
+        # failure 500 on get_received
+        response = app.get('/messages/received/1', json = {'requester_id' : 1})
+        self.assertEqual(response.status_code,500) 
+        # failure 500 on get_draft
+        response = app.get('/messages/drafts/1', json = {'requester_id' : 1})
+        self.assertEqual(response.status_code,500) 
+
+        # mocking users
+
+        # users 1 and 2 exist
+        responses.add(responses.GET, "%s/users/%s" % (USERS_ENDPOINT, str(1)),
+                  json={'status': 'Current user is present',
+                        'user': user1}, status=200)
+
+        responses.add(responses.GET, "%s/users/%s" % (USERS_ENDPOINT, str(2)),
+                  json={'status': 'Current user is present',
+                        'user': user2}, status=200)
+
+        # users 3 doesn't exist
+        responses.add(responses.GET, "%s/users/%s" % (USERS_ENDPOINT, str(3)),
+                  json={'status': 'Current user is present',
+                        'user': user3}, status=404)
+
+        json_unexisting_requester={'requester_id':3}
+        json_existing_requester={'requester_id':1}
+        json_existing_requester_not_the_sender={'requester_id':2}
+
+       # failure 404 on get_pending
+        response = app.get('/messages/pending/1', json = json_unexisting_requester)
+        self.assertEqual(response.status_code,404) 
+        # failure 500 on get_delivered
+        response = app.get('/messages/delivered/1', json = json_unexisting_requester)
+        self.assertEqual(response.status_code,404) 
+        # failure 500 on get_received
+        response = app.get('/messages/received/1', json = json_unexisting_requester)
+        self.assertEqual(response.status_code,404) 
+        # failure 500 on get_draft
+        response = app.get('/messages/drafts/1', json = json_unexisting_requester)
+        self.assertEqual(response.status_code,404) 
+
+        # failure on retrieving existing pending message having blacklist ms unavailable
+        response = app.get('/messages/pending/1', json = json_existing_requester)
+        self.assertEqual(response.status_code,500) 
+
+        # failure on retrieving existing draft message having blacklist ms unavailable
+        response = app.get('/messages/drafts/2', json = json_existing_requester)
+        self.assertEqual(response.status_code,500) 
+
+        # mocking blacklist
+        responses.add(responses.GET, "%s/blacklist" % (BLACKLIST_ENDPOINT),
+        json={'blacklist': [40,45,56]}, status=200)
+
+        # failure on retrieving pending message having blacklist ms available but requester is not sender
+        response = app.get('/messages/pending/1', json = json_existing_requester_not_the_sender)
+        self.assertEqual(response.status_code,403) 
+
+        # failure on retrieving draft message having blacklist ms available but requester is not sender
+        response = app.get('/messages/drafts/2', json = json_existing_requester_not_the_sender)
+        self.assertEqual(response.status_code,403) 
+
+        # success on retrieving pending message having blacklist ms available
+        response = app.get('/messages/pending/1', json = json_existing_requester)
+        self.assertEqual(response.status_code,200) 
+
+        # failure on retrieving draft message having blacklist ms available
+        response = app.get('/messages/drafts/2', json = json_existing_requester)
+        self.assertEqual(response.status_code,200) 
+        
+    @responses.activate
+    def test_04_delete_draft_message(self):
+        # creating an app instace to run test activities
+        tested_app = create_app()
+        USERS_ENDPOINT = tested_app.config['USERS_MS_URL']
+        BLACKLIST_ENDPOINT = tested_app.config['BLACKLIST_MS_URL']
+        app = tested_app.test_client()
+
+        user1 = {
+            'id' : 1,
+            'email' : 'prova@mail.com',
+            'firstname' : 'Maurizio',
+            'lastname' : 'Costanzo',
+            'date_of_birth' : '1938-08-28',
+            'lottery_points' : 0,
+            'has_picture' : False,
+            'is_active' : True,
+            'content_filter_enabled' : False
+        }
+
+        user2 = {
+            'id': 2,
+            'email': 'prova2@mail.com',
+            'firstname': 'Maurizio',
+            'lastname': 'Costanzo',
+            'date_of_birth': '1938-08-28',
+            'lottery_points': 0,
+            'has_picture': False,
+            'is_active': True,
+            'content_filter_enabled': False
+        }
+
+        user3 = {
+            'id': 3,
+            'email': 'prova3@mail.com',
+            'firstname': 'Maurizio',
+            'lastname': 'Costanzo',
+            'date_of_birth': '1938-08-28',
+            'lottery_points': 0,
+            'has_picture': False,
+            'is_active': True,
+            'content_filter_enabled': False
+        }
+
+    @responses.activate
+    def test_05_delete_pending_message(self):
+        # creating an app instace to run test activities
+        tested_app = create_app()
+        USERS_ENDPOINT = tested_app.config['USERS_MS_URL']
+        BLACKLIST_ENDPOINT = tested_app.config['BLACKLIST_MS_URL']
+        app = tested_app.test_client()
+
+        user1 = {
+            'id' : 1,
+            'email' : 'prova@mail.com',
+            'firstname' : 'Maurizio',
+            'lastname' : 'Costanzo',
+            'date_of_birth' : '1938-08-28',
+            'lottery_points' : 100,  # the user needs lottery points to delete a pending message
+            'has_picture' : False,
+            'is_active' : True,
+            'content_filter_enabled' : False
+        }
+
+        user2 = {
+            'id': 2,
+            'email': 'prova2@mail.com',
+            'firstname': 'Maurizio',
+            'lastname': 'Costanzo',
+            'date_of_birth': '1938-08-28',
+            'lottery_points': 0,
+            'has_picture': False,
+            'is_active': True,
+            'content_filter_enabled': False
+        }
+
+        user3 = {
+            'id': 3,
+            'email': 'prova3@mail.com',
+            'firstname': 'Maurizio',
+            'lastname': 'Costanzo',
+            'date_of_birth': '1938-08-28',
+            'lottery_points': 0,
+            'has_picture': False,
+            'is_active': True,
+            'content_filter_enabled': False
+        }

@@ -144,7 +144,7 @@ def new_message():
     # TODO IMPORTANTE!!!!!!!!!
     # CARTELLA ATTACHMENTS GIA' CREATA IN __INIT__.PY
 
-    if img_base64 is not '':
+    if img_base64 != '':
         # create a subdirectory of 'attachments' having as name the id of the message
         os.mkdir(os.path.join(os.getcwd(), 'mib', 'static', 'attachments', str(id)))
 
