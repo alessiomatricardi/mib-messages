@@ -9,7 +9,7 @@ class Message(db.Model):
     __tablename__ = 'Message'
 
     # A list of fields to be serialized
-    SERIALIZE_LIST = ['id', 'sender_id', 'content', 'is_sent', 'is_delivered', 'deliver_time', 'image']
+    SERIALIZE_LIST = ['id', 'sender_id', 'content', 'deliver_time', 'image']
 
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -32,10 +32,6 @@ class Message(db.Model):
 
     def set_content(self, content):
         self.content = content
-
-    #
-    # TODO add setter methods to set the deliver_time and the is_sent variables
-    #
 
     def get_id(self):
         return self.id

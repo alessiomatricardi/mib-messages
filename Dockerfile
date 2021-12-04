@@ -14,6 +14,9 @@ WORKDIR /app
 # installing all requirements
 RUN ["pip", "install", "-r", "requirements.prod.txt"]
 
+# install english language to censor contents
+RUN ["python3", "-m", "spacy", "download", "en"]
+
 # exposing the port
 EXPOSE 5003/tcp
 
