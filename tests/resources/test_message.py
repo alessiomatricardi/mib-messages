@@ -595,7 +595,7 @@ class ResourcesTest(unittest.TestCase):
 
         # success on update with a new recipient
         user4 = {
-            'id': 3,
+            'id': 4,
             'email': 'prova4@mail.com',
             'firstname': 'Piersilvio',
             'lastname': 'Berlusconi',
@@ -619,25 +619,41 @@ class ResourcesTest(unittest.TestCase):
 
         responses.add(responses.GET, "%s/users/%s" % (USERS_ENDPOINT, str(4)),
                   json={'status': 'Current user is present',
-                        'user': user2}, status=200)
+                        'user': user4}, status=200)
 
         responses.add(responses.GET, "%s/users/%s" % (USERS_ENDPOINT, str(user4['email'])),
                   json={'status': 'Current user is present',
-                        'user': user2}, status=200)
+                        'user': user4}, status=200)
 
         # success on updating n.2
         response = app.put('/messages/drafts/2', json = json_modify_draft)
         self.assertEqual(response.status_code,200)
 
-        with tested_app.app_context():
-            from mib import db
-            from mib.models import Message,Message_Recipient
-            
-            message= db.session.query(Message).filter(Message.id==2).first()
-            message_recipient = db.session.query(Message_Recipient).filter(Message_Recipient.id==2).all()
-            print(message.serialize())
-            for mr in message_recipient:
-                print(mr.serialize()) 
+        # now user 4 is in the blacklist
+        # mocking blacklist
+        responses.replace(responses.GET, "%s/blacklist/" % (BLACKLIST_ENDPOINT),
+        json={'blacklist': [4,40,45,56], "description": "Blacklist successfully retrieved",
+                    "status": "success"}, status=200)
+
+        # success on updating n.3, user4 is still a selected recipient, but is going to be removed because inside blacklist
+        response = app.put('/messages/drafts/2', json = json_modify_draft)
+        self.assertEqual(response.status_code,200)
+
+        # draft deletion json variables
+        json_delete_draft_existing_requester = {'requester_id':1}
+        json_delete_draft_existing_requester_not_the_sender = {'requester_id':2}
+        
+        # delete draft failure 404, draft not found
+        response = app.delete('/messages/drafts/100', json = json_delete_draft_existing_requester)
+        self.assertEqual(response.status_code,404)
+
+        # delete draft failure 403, requester id is not the sender id
+        response = app.delete('/messages/drafts/2', json = json_delete_draft_existing_requester_not_the_sender)
+        self.assertEqual(response.status_code,403)
+
+        # success
+        response = app.delete('/messages/drafts/2', json = json_delete_draft_existing_requester)
+        self.assertEqual(response.status_code,200)
 
     @responses.activate
     def test_05_delete_pending_message(self):
@@ -682,3 +698,52 @@ class ResourcesTest(unittest.TestCase):
             'is_active': True,
             'content_filter_enabled': False
         }
+        # pending message deletion variables
+        json_delete_pending_existing_requester = {'requester_id':1}
+        json_delete_pending_unexisting_requester = {'requester_id':3}
+        json_delete_pending_not_the_sender = {'requester_id':2}
+
+        # 500 unavailable users
+        response = app.delete('/messages/pending/1', json = json_delete_pending_existing_requester)
+        self.assertEqual(response.status_code,500)
+
+        # mocking users
+        responses.add(responses.GET, "%s/users/%s" % (USERS_ENDPOINT, str(1)),
+                  json={'status': 'Current user is present',
+                        'user': user1}, status=200)
+        responses.add(responses.GET, "%s/users/%s" % (USERS_ENDPOINT, str(2)),
+                  json={'status': 'Current user is present',
+                        'user': user2}, status=200)
+        responses.add(responses.GET, "%s/users/%s" % (USERS_ENDPOINT, str(3)),
+                  json={'status': 'Current user is present',
+                        'user': user3}, status=404)
+
+        # 404 pending message not found
+        response = app.delete('/messages/pending/100', json = json_delete_pending_existing_requester)
+        self.assertEqual(response.status_code,404)
+
+        # 403 not the sender
+        response = app.delete('/messages/pending/1', json = json_delete_pending_not_the_sender)
+        self.assertEqual(response.status_code,403)
+
+        # 404 non existing user
+        response = app.delete('/messages/pending/1', json = json_delete_pending_unexisting_requester)
+        self.assertEqual(response.status_code,404)
+
+        # mocking not enough lottery points
+        responses.add(responses.PUT, "%s/users/spend" % (USERS_ENDPOINT),
+                  json={'status': 'Not enpugh lottery points'}, status=403)
+
+        # not enough lottery points
+        response = app.delete('/messages/pending/1', json = json_delete_pending_existing_requester)
+        self.assertEqual(response.status_code,403)
+
+        # mocking enough lottery points
+        responses.replace(responses.PUT, "%s/users/spend" % (USERS_ENDPOINT),
+                  json={'status': 'Not enpugh lottery points'}, status=200)
+
+        # success
+        response = app.delete('/messages/pending/1', json = json_delete_pending_existing_requester)
+        self.assertEqual(response.status_code,200)
+
+
