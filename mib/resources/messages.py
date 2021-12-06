@@ -856,8 +856,14 @@ def modify_draft_message(message_id):
     by the Gateway (delete=True and image provided), image deletion has the precedence
     Note that if delete_image=False and new_image = '' -> keep current attachment
     '''
-    delete_image = False # TODO REMOVE THIS
-    new_image = ''
+    # check if the user_id is the sender of the draft message
+    if draft_message.sender_id != requester_id:
+        response_object = {
+            'status': 'failure',
+            'description': 'Forbidden: user is not the sender of this message'
+        }
+        return jsonify(response_object), 403
+        
     if delete_image:
         # TODO REMOVE ATTACHMENT
         # TODO REMOVE FOLDER STATIC/ATTACHMENTS/<MESSAGE_ID>
@@ -865,12 +871,84 @@ def modify_draft_message(message_id):
     elif new_image != '':
         pass
         # TODO replace old attachment with the new one
-    
+
+    # updating message fields
+    draft_message.content = content
+    draft_message.deliver_time = datetime.datetime.fromisoformat(deliver_time)
+
+    message_new_recipient_ids = []
+
+    # retrieving ids of selected recipients and checking their existance
+    for recipient in recipients:
+        data = {'requester_id':requester_id}
+        try: 
+            recipient_user =  requests.get("%s/users/%s" % (USERS_ENDPOINT, str(recipient)),
+                                    timeout=REQUESTS_TIMEOUT_SECONDS,
+                                    json=data)
+
+            if recipient_user.status_code != 200:
+
+                return recipient_user.json(), recipient_user.status_code
+            
+            message_new_recipient_ids.append(recipient_user.json()['user']['id'])
+
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+            response_object = {
+                'status': 'failure',
+                'description': 'Error in retrieving user',
+            }
+            return jsonify(response_object), 500
+
+    message_current_recipient_ids = MessageManager.retrieve_message_recipients(draft_message.id)
+    for recipient_id in message_current_recipient_ids:
+        if recipient_id not in message_new_recipient_ids:
+            MessageManager.remove_message_recipient(draft_message.id,recipient_id)
+
+    for recipient_user_id in message_new_recipient_ids:
+        data = {'requester_id':requester_id}
+
+        try: 
+            blacklist = requests.get("%s/blacklist/" % (BLACKLIST_ENDPOINT),
+                                    timeout=REQUESTS_TIMEOUT_SECONDS,
+                                    json=data)
+            
+            if blacklist.status_code != 200:
+                return blacklist.json(), blacklist.status_code
+
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+            response_object = {
+                'status': 'failure',
+                'description': 'Error in retrieving user',
+            }
+            return jsonify(response_object), 500
+        
+        message_recipient = None
+        message_recipient = MessageManager.retrieve_message_recipient(draft_message.id,recipient_user_id)
+        blacklist_data = blacklist.json()
+
+        if recipient_user_id in blacklist_data['blacklist']:
+            if message_recipient is not None:
+                MessageManager.remove_message_recipient(draft_message.id,recipient_user_id)
+                message_new_recipient_ids.remove(recipient_user_id)
+        else:
+            if message_recipient is None:
+                msg_recipient = Message_Recipient()
+                msg_recipient.id = draft_message.id
+                msg_recipient.recipient_id = recipient_user_id
+                MessageManager.create_message_recipient(msg_recipient)
+        
     # set the message as sent
     # The message is in 'pending' status by now
     if is_sent:
         draft_message.is_sent = True
-        MessageManager.update_message(draft_message)
+        
+    MessageManager.update_message(draft_message)
+
+    response_object={
+        'status': 'success',
+        'message': 'Draft modified'
+    }
+    return response_object,200
 
 
 # DELETE OPERATIONS
@@ -890,7 +968,6 @@ def delete_draft_message(message_id):
                                 json=data)
 
         if response.status_code != 200:
-
             return response.json(), response.status_code
 
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
@@ -913,10 +990,49 @@ def delete_pending_message(message_id):
     data = request.get_json()
     requester_id = data.get('requester_id')
 
+    user = None
+
     # check if the requester_id exists
     try:
         data = {'requester_id': requester_id}
         response = requests.get("%s/users/%s" % (USERS_ENDPOINT, str(requester_id)),
+                                timeout=REQUESTS_TIMEOUT_SECONDS,
+                                json=data)
+
+        if response.status_code != 200:
+
+            return response.json(), response.status_code
+
+        user = response.json()['user']
+
+    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+        response_object = {
+            'status': 'failure',
+            'description': 'Error in retrieving user',
+        }
+        return jsonify(response_object), 500
+
+    message = None
+    # retrieving the message, if exists
+    message = MessageManager.retrieve_message_by_id(PENDING_LABEL, message_id)
+
+    if message is None:
+        response_object = {
+            'status':'failure',
+            'description':'Pending message not found the sender'
+        }
+        return response_object, 404 
+
+    if user['id'] != message.sender_id:
+        response_object= {
+            'status':'failure',
+            'description':'Not the sender'
+        }
+        return response_object, 403    
+    
+    try: 
+        data = {'requester_id': requester_id}
+        response = requests.put("%s/users/spend" % (USERS_ENDPOINT),
                                 timeout=REQUESTS_TIMEOUT_SECONDS,
                                 json=data)
 
@@ -931,8 +1047,5 @@ def delete_pending_message(message_id):
         }
         return jsonify(response_object), 500
 
-
-    # retrieving the message, if exists
-    message = MessageManager.retrieve_message_by_id(PENDING_LABEL, message_id)
-
-    return MessageLogic.delete_message(message, requester_id)
+    return MessageLogic.delete_message(message,requester_id)
+    
