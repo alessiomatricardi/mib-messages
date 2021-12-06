@@ -36,16 +36,16 @@ class Message(db.Model):
     def get_id(self):
         return self.id
     
-    def get_obj(self):
-        message_obj = {
-            'id': self.id,
-            'sender_id': self.sender_id,
-            'content': self.content,
-            'is_sent': self.is_sent,
-            'is_delivered': self.is_delivered,
-            'deliver_time': self.deliver_time
-        }
-        return message_obj
+    # def get_obj(self):
+    #     message_obj = {
+    #         'id': self.id,
+    #         'sender_id': self.sender_id,
+    #         'content': self.content,
+    #         'is_sent': self.is_sent,
+    #         'is_delivered': self.is_delivered,
+    #         'deliver_time': self.deliver_time
+    #     }
+    #     return message_obj
 
     def serialize(self) -> dict:
         return dict([(k, self.__getattribute__(k)) for k in self.SERIALIZE_LIST])
