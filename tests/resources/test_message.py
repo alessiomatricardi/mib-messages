@@ -75,7 +75,7 @@ class ResourcesTest(unittest.TestCase):
 
         # mocking existing user but blacklist is unavailable
         responses.add(responses.GET, "%s/users/%s" % (USERS_ENDPOINT, str(1)),
-                  json={'status': 'Current user not present'}, status=200)
+                  json={'status': 'Current user present'}, status=200)
 
         # unavailable blacklist microservice
         response = app.post('/messages', json = new_message_data)
@@ -218,7 +218,6 @@ class ResourcesTest(unittest.TestCase):
             'content_filter_enabled': False
         }
 
-
         # failure without users response not already mocked, status_code 500
         response = app.get('/bottlebox/delivered', json = {'requester_id' : 1})
         self.assertEqual(response.status_code, 500)
@@ -234,7 +233,6 @@ class ResourcesTest(unittest.TestCase):
         # failure without users response not already mocked, status_code 500
         response = app.get('/bottlebox/drafts', json = {'requester_id' : 1})
         self.assertEqual(response.status_code, 500)
-
 
         # mocking
         # user 2 doesn't exist
@@ -371,7 +369,7 @@ class ResourcesTest(unittest.TestCase):
 
         # users 3 doesn't exist
         responses.add(responses.GET, "%s/users/%s" % (USERS_ENDPOINT, str(3)),
-                  json={'status': 'Current user is present',
+                  json={'status': 'Current user is not present',
                         'user': user3}, status=404)
 
         json_unexisting_requester={'requester_id':3}
@@ -544,10 +542,10 @@ class ResourcesTest(unittest.TestCase):
 
         # users 3 doesn't exist
         responses.add(responses.GET, "%s/users/%s" % (USERS_ENDPOINT, str(3)),
-                  json={'status': 'Current user is present',
+                  json={'status': 'Current user is not present',
                         'user': user3}, status=404) 
         responses.add(responses.GET, "%s/users/%s" % (USERS_ENDPOINT, str(user3['email'])),
-                  json={'status': 'Current user is present',
+                  json={'status': 'Current user is not present',
                         'user': user2}, status=404)
 
         # failure 404 on updating
@@ -715,7 +713,7 @@ class ResourcesTest(unittest.TestCase):
                   json={'status': 'Current user is present',
                         'user': user2}, status=200)
         responses.add(responses.GET, "%s/users/%s" % (USERS_ENDPOINT, str(3)),
-                  json={'status': 'Current user is present',
+                  json={'status': 'Current user is not present',
                         'user': user3}, status=404)
 
         # 404 pending message not found
@@ -732,7 +730,7 @@ class ResourcesTest(unittest.TestCase):
 
         # mocking not enough lottery points
         responses.add(responses.PUT, "%s/users/spend" % (USERS_ENDPOINT),
-                  json={'status': 'Not enpugh lottery points'}, status=403)
+                  json={'status': 'Not enough lottery points'}, status=403)
 
         # not enough lottery points
         response = app.delete('/messages/pending/1', json = json_delete_pending_existing_requester)
@@ -740,7 +738,7 @@ class ResourcesTest(unittest.TestCase):
 
         # mocking enough lottery points
         responses.replace(responses.PUT, "%s/users/spend" % (USERS_ENDPOINT),
-                  json={'status': 'Not enpugh lottery points'}, status=200)
+                  json={'status': 'Operation allowed'}, status=200)
 
         # success
         response = app.delete('/messages/pending/1', json = json_delete_pending_existing_requester)
