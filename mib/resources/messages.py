@@ -219,22 +219,9 @@ def get_received_bottlebox():
         if status_code == 200:
             messages_json.append(message_json)
         else:
-            if status_code == 403:
-                response_object = {
-                    'status': 'failure',
-                    'description': 'Forbidden: user is not a recipient of this message'
-                }
-            elif status_code == 404:
-                response_object = {
-                    'status': 'failure',
-                    'description': 'Message not found'
-                }
-            elif status_code == 500:
-                response_object = {
-                    'status': 'failure',
-                    'description': 'Server error: Error in retrieving sender/blacklist',
-                }
-
+            response_object = {
+                'status': 'failure'              
+            }
             return jsonify(response_object), status_code
 
 
@@ -288,23 +275,9 @@ def get_draft_bottlebox():
         if status_code == 200:
             messages_json.append(message_json)
         else:
-            if status_code == 403:
-                response_object = {
-                    'status': 'failure',
-                    'description': 'Forbidden: user is not the sender of this message'
-                }
-            elif status_code == 404:
-                response_object = {
-                    'status': 'failure',
-                    'description': 'Message not found'
-                }
-            elif status_code == 500:
-                response_object = {
-                    'status': 'failure',
-                    'description':
-                    'Server error: Error in retrieving sender/blacklist',
-                }
-
+            response_object = {
+                'status': 'failure'
+            }
             return jsonify(response_object), status_code
 
     response_object = {
@@ -357,23 +330,9 @@ def get_pending_bottlebox():
         if status_code == 200:
             messages_json.append(message_json)
         else:
-            if status_code == 403:
-                response_object = {
-                    'status': 'failure',
-                    'description': 'Forbidden: user is not the sender of this message'
-                }
-            elif status_code == 404:
-                response_object = {
-                    'status': 'failure',
-                    'description': 'Message not found'
-                }
-            elif status_code == 500:
-                response_object = {
-                    'status': 'failure',
-                    'description':
-                    'Server error: Error in retrieving sender/blacklist',
-                }
-
+            response_object = {
+                'status': 'failure'
+            }
             return jsonify(response_object), status_code
 
     response_object = {
@@ -425,27 +384,10 @@ def get_delivered_bottlebox():
         # check status code
         if status_code == 200:
             messages_json.append(message_json)
-        else:
-            if status_code == 403:
-                response_object = {
-                    'status':
-                    'failure',
-                    'description':
-                    'Forbidden: user is not the sender of this message'
-                }
-            elif status_code == 404:
-                response_object = {
-                    'status': 'failure',
-                    'description': 'Message not found'
-                }
-            elif status_code == 500:
-                response_object = {
-                    'status':
-                    'failure',
-                    'description':
-                    'Server error: Error in retrieving sender/blacklist',
-                }
-
+        else:  
+            response_object = {
+                'status':'failure',
+            }
             return jsonify(response_object), status_code
 
     response_object = {
@@ -491,15 +433,10 @@ def get_received_message(message_id):
 
     message_json, status_code = MessageLogic.get_received_message(message, requester)
 
-    if status_code == 403:
+    if status_code == 403 or status_code ==404:
         response_object = {
             'status': 'failure',
-            'description': 'Forbidden: user is not a recipient of this message'
-        }
-    elif status_code == 404:
-        response_object = {
-            'status': 'failure',
-            'description': 'Message not found'
+            'description': 'Forbidden: user does not exist or is not a recipient of this message'
         }
     elif status_code == 500:
         response_object = {
@@ -550,15 +487,10 @@ def get_draft_message(message_id):
 
     message_json, status_code = MessageLogic.get_draft_message(message, requester)
 
-    if status_code == 403:
+    if status_code == 403 or status_code == 404:
         response_object = {
             'status': 'failure',
-            'description': 'Forbidden: user is not the sender of this message'
-        }
-    elif status_code == 404:
-        response_object = {
-            'status': 'failure',
-            'description': 'Message not found'
+            'description': 'Forbidden: user does not exist or is not a sender of this message'
         }
     elif status_code == 500:
         response_object = {
@@ -611,15 +543,10 @@ def get_pending_message(message_id):
     # since pending and delivered messages are similar, they share most of the code
     message_json, status_code = MessageLogic.get_pending_or_delivered_message(message, requester)
 
-    if status_code == 403:
+    if status_code == 403 or status_code == 404:
         response_object = {
             'status': 'failure',
-            'description': 'Forbidden: user is not the sender of this message'
-        }
-    elif status_code == 404:
-        response_object = {
-            'status': 'failure',
-            'description': 'Message not found'
+            'description': 'Forbidden: user does not exist or is not a sender of this message'
         }
     elif status_code == 500:
         response_object = {
@@ -802,7 +729,7 @@ def report_message(message_id):
     report = Report()
     report.reporting_user_id = requester_id
     report.message_id = message_id
-    report.reporting_user_id = datetime.datetime.now()
+    report.report_time = datetime.datetime.now()
 
     ReportManager.create_report(report)
 
