@@ -842,8 +842,8 @@ components:
         - content
         - deliver_time
         - recipients
-        - new_image
-        - new_image_filename
+        - image
+        - image_filename
         - delete_image
         - is_sent
       type: object
@@ -865,11 +865,11 @@ components:
           items:
             type: string
             format: email
-        new_image:
+        image:
           type: string
           format: base64
           description: Base64 rapresentation of the message attachment
-        new_image_filename:
+        image_filename:
           type: string
           description: Image secure filename
         delete_image:
