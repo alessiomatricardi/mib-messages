@@ -1,5 +1,6 @@
 from mib.dao.manager import Manager
 from mib.models import Message, Message_Recipient
+import datetime
 
 from typing import List
 
@@ -104,6 +105,12 @@ class MessageManager(Manager):
         ).first()
 
         return recipient
+
+    @staticmethod
+    def retrieve_messages_to_deliver():
+        return Message.query.join(Message_Recipient, Message.id == Message_Recipient.id)\
+                     .filter(Message.is_sent == True, Message.is_delivered == False, Message.deliver_time < datetime.datetime.now()).all()
+
 
     # UPDATE OPERATIONS
 

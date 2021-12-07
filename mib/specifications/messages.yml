@@ -11,8 +11,7 @@ paths:
   /messages:
     post:
       summary: Creating a new Message
-      tags: 
-        - Messages 
+      tags: [ Messages ]
       operationId: mib.resources.messages.new_message
       requestBody:
         required: true
