@@ -126,7 +126,6 @@ def new_message():
     message.sender_id = requester_id
     message.content = content
     message.deliver_time = datetime.datetime.fromisoformat(deliver_time)
-    message.image = image_filename
     if not is_draft:
         # save message as pending
         message.is_sent = True
@@ -162,6 +161,9 @@ def new_message():
                                     str(message.id), image_filename)
             
             img.save(path_to_save, quality=100, subsampling=0)
+
+            # save inside db new attachment filename
+            message.image = image_filename
 
         except Exception:
             response_object = {
