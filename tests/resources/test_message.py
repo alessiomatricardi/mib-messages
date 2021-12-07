@@ -26,6 +26,7 @@ class ResourcesTest(unittest.TestCase):
             'deliver_time' : '2025-01-01 15:00',
             'recipients' : [json_recipient_email],
             'image': '',
+            'image_filename' : '',
             'is_draft': False
         }
 
@@ -67,6 +68,7 @@ class ResourcesTest(unittest.TestCase):
             'deliver_time' : '2025-01-01 15:00',
             'recipients' : [json_recipient_email],
             'image': '',
+            'image_filename' : '',
             'is_draft': False
         }
 
@@ -83,13 +85,15 @@ class ResourcesTest(unittest.TestCase):
 
         # test unexisting recipient
         json_unexisting_recipient_email = 'prova5@mail.com'
-        new_wrong_message_data = {'requester_id': 1,
-                             'content' : 'testing!',
-                             'deliver_time' : '2025-01-01 15:00',
-                             'recipients' : [json_unexisting_recipient_email],
-                             'image': '',
-                             'is_draft': False
-                             }
+        new_wrong_message_data = {
+            'requester_id': 1,
+            'content' : 'testing!',
+            'deliver_time' : '2025-01-01 15:00',
+            'recipients' : [json_unexisting_recipient_email],
+            'image': '',
+            'image_filename' : '',
+            'is_draft': False
+        }
         responses.add(responses.GET, "%s/users/%s" % (USERS_ENDPOINT, str(json_unexisting_recipient_email)),
         json = {'status' : 'failure', 'message' : 'User not found'}, status=404)
 
@@ -113,6 +117,7 @@ class ResourcesTest(unittest.TestCase):
             'deliver_time' : '2025-01-01 15:00',
             'recipients' : [json_blocked_recipient_email],
             'image': '',
+            'image_filename' : '',
             'is_draft': False
         }
         responses.add(responses.GET, "%s/users/%s" % (USERS_ENDPOINT, str(json_blocked_recipient_email)),
@@ -149,6 +154,7 @@ class ResourcesTest(unittest.TestCase):
             'deliver_time' : '2025-01-01 15:00',
             'recipients' : [json_recipient_email],
             'image': '',
+            'image_filename' : '',
             'is_draft': True
         }
         response = app.post('/messages', json = new_draft_message_data)
@@ -161,6 +167,7 @@ class ResourcesTest(unittest.TestCase):
             'deliver_time' : '2021-01-01 15:00',
             'recipients' : [json_recipient_email],
             'image': '',
+            'image_filename' : '',
             'is_draft': False
         }
         response = app.post('/messages', json = new_draft_message_data)
@@ -490,7 +497,8 @@ class ResourcesTest(unittest.TestCase):
             'content' : 'testing!',
             'deliver_time' : '2025-01-01 15:00',
             'recipients' : [user2['email']],
-            'new_image': '',
+            'image': '',
+            'image_filename' : '',
             'delete_image':False,
             'is_sent': False
         }
@@ -499,7 +507,8 @@ class ResourcesTest(unittest.TestCase):
             'content' : 'testing!',
             'deliver_time' : '2025-01-01 15:00',
             'recipients' : [user2['email']],
-            'new_image': '',
+            'image': '',
+            'image_filename' : '',
             'delete_image': False,
             'is_sent': False
         }
@@ -508,7 +517,8 @@ class ResourcesTest(unittest.TestCase):
             'content' : 'testing!',
             'deliver_time' : '2025-01-01 15:00',
             'recipients' : [user2['email']],
-            'new_image': '',
+            'image': '',
+            'image_filename' : '',
             'delete_image':False,
             'is_sent': False
         }
@@ -544,9 +554,9 @@ class ResourcesTest(unittest.TestCase):
         responses.add(responses.GET, "%s/users/%s" % (USERS_ENDPOINT, str(3)),
                   json={'status': 'Current user is not present',
                         'user': user3}, status=404) 
-        responses.add(responses.GET, "%s/users/%s" % (USERS_ENDPOINT, str(user3['email'])),
-                  json={'status': 'Current user is not present',
-                        'user': user2}, status=404)
+        
+        responses.add(responses.GET, "%s/users/%s" % (USERS_ENDPOINT, str(user3['email'])), 
+        status=404)
 
         # failure 404 on updating
         response = app.put('/messages/drafts/2', json = json_modify_draft_unexisting_requester)
@@ -569,10 +579,10 @@ class ResourcesTest(unittest.TestCase):
         self.assertEqual(response.status_code,500)
 
         # mocking blacklist
-        responses.add(responses.GET, "%s/blacklist/" % (BLACKLIST_ENDPOINT),
+        responses.add(responses.GET, "%s/blacklist" % (BLACKLIST_ENDPOINT),
         json={'blacklist': [40,45,56], "description": "Blacklist successfully retrieved",
                     "status": "success"}, status=200)
-        
+               
         # success on updating n.1
         response = app.put('/messages/drafts/2', json = json_modify_draft)
         self.assertEqual(response.status_code,200)
@@ -582,10 +592,14 @@ class ResourcesTest(unittest.TestCase):
             'content' : 'testing!',
             'deliver_time' : '2025-01-01 15:00',
             'recipients' : [user3['email']],
-            'new_image': '',
+            'image': '',
+            'image_filename' : '',
             'delete_image':False,
             'is_sent': False
         }
+
+        responses.replace(responses.GET, "%s/users/%s" % (USERS_ENDPOINT, str(user3['email'])), 
+            json = {'status' : 'User not found'}, status=404)
 
         # failure 404 not found recipient
         response = app.put('/messages/drafts/2', json = json_modify_draft)
@@ -609,7 +623,8 @@ class ResourcesTest(unittest.TestCase):
             'content' : 'two recipient update test!',
             'deliver_time' : '2025-01-01 15:00',
             'recipients' : [user2['email'], user4['email']],
-            'new_image': '',
+            'image': '',
+            'image_filename' : '',
             'delete_image':False,
             'is_sent': False
         }
@@ -629,7 +644,7 @@ class ResourcesTest(unittest.TestCase):
 
         # now user 4 is in the blacklist
         # mocking blacklist
-        responses.replace(responses.GET, "%s/blacklist/" % (BLACKLIST_ENDPOINT),
+        responses.replace(responses.GET, "%s/blacklist" % (BLACKLIST_ENDPOINT),
         json={'blacklist': [4,40,45,56], "description": "Blacklist successfully retrieved",
                     "status": "success"}, status=200)
 
