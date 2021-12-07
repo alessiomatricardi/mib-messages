@@ -99,7 +99,10 @@ class MessageManager(Manager):
         Manager.check_none(message_id=message_id)
         Manager.check_none(recipient_id=recipient_id)
 
-        recipient = Message_Recipient.query.filter(and_(Message_Recipient.id == message_id,Message_Recipient.recipient_id == recipient_id)).first()
+        recipient = Message_Recipient.query.filter(and_(
+            Message_Recipient.id == message_id,
+            Message_Recipient.recipient_id == recipient_id)
+        ).first()
 
         return recipient
 
