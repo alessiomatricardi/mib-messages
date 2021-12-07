@@ -145,7 +145,7 @@ def new_message():
         MessageManager.create_message_recipient(message_recipient)
 
     # save attachment
-    if image_base64 is not '':
+    if image_base64 != '':
         basepath = os.path.join(os.getcwd(), 'mib', 'static', 'attachments')
 
         # create a subdirectory of 'attachments' having as name the id of the message
