@@ -759,4 +759,166 @@ class ResourcesTest(unittest.TestCase):
         response = app.delete('/messages/pending/1', json = json_delete_pending_existing_requester)
         self.assertEqual(response.status_code,200)
 
+    @responses.activate
+    def test_06_report_received_message(self):
+        # creating an app instace to run test activities
+        tested_app = create_app()
+        USERS_ENDPOINT = tested_app.config['USERS_MS_URL']
+        BLACKLIST_ENDPOINT = tested_app.config['BLACKLIST_MS_URL']
+        app = tested_app.test_client()
 
+        user1 = {
+            'id' : 1,
+            'email' : 'prova@mail.com',
+            'firstname' : 'Maurizio',
+            'lastname' : 'Costanzo',
+            'date_of_birth' : '1938-08-28',
+            'lottery_points' : 0,
+            'has_picture' : False,
+            'is_active' : True,
+            'content_filter_enabled' : False
+        }
+
+        user2 = {
+            'id': 2,
+            'email': 'prova2@mail.com',
+            'firstname': 'Maurizio',
+            'lastname': 'Costanzo',
+            'date_of_birth': '1938-08-28',
+            'lottery_points': 0,
+            'has_picture': False,
+            'is_active': True,
+            'content_filter_enabled': False
+        }
+
+        user3 = {
+            'id': 3,
+            'email': 'prova3@mail.com',
+            'firstname': 'Maurizio',
+            'lastname': 'Costanzo',
+            'date_of_birth': '1938-08-28',
+            'lottery_points': 0,
+            'has_picture': False,
+            'is_active': True,
+            'content_filter_enabled': False
+        }
+
+        # json variables
+        json_recipient_requester = {'requester_id':user2['id']}
+        json_not_recipient_requester = {'requester_id':user1['id']}
+        json_unexisting_recipient_requester = {'requester_id':user3['id']}
+
+        # 500
+        response = app.put('/messages/received/3/report', json = json_recipient_requester)
+        self.assertEqual(response.status_code,500)
+        
+        # mocking user
+        responses.add(responses.GET, "%s/users/%s" % (USERS_ENDPOINT, str(1)),
+                  json={'status': 'Current user is present',
+                        'user': user1}, status=200)
+        responses.add(responses.GET, "%s/users/%s" % (USERS_ENDPOINT, str(2)),
+                  json={'status': 'Current user is present',
+                        'user': user2}, status=200)
+        responses.add(responses.GET, "%s/users/%s" % (USERS_ENDPOINT, str(3)),
+                  json={'status': 'Current user is not present',
+                        'user': user3}, status=404)
+
+        # 404 not existing user
+        response = app.put('/messages/received/3/report', json = json_unexisting_recipient_requester)
+        self.assertEqual(response.status_code,404)
+
+        # 403 not recipient
+        response = app.put('/messages/received/3/report', json = json_not_recipient_requester)
+        self.assertEqual(response.status_code,403)
+
+        # mocking blacklist ??
+
+        # success report
+        response = app.put('/messages/received/3/report', json = json_recipient_requester)
+        self.assertEqual(response.status_code,200)
+
+        # 403 in reporting again
+        response = app.put('/messages/received/3/report', json = json_recipient_requester)
+        self.assertEqual(response.status_code,403)
+
+    @responses.activate
+    def test_07_hide_received_message(self):
+        # creating an app instace to run test activities
+        tested_app = create_app()
+        USERS_ENDPOINT = tested_app.config['USERS_MS_URL']
+        BLACKLIST_ENDPOINT = tested_app.config['BLACKLIST_MS_URL']
+        app = tested_app.test_client()
+
+        user1 = {
+            'id' : 1,
+            'email' : 'prova@mail.com',
+            'firstname' : 'Maurizio',
+            'lastname' : 'Costanzo',
+            'date_of_birth' : '1938-08-28',
+            'lottery_points' : 0,
+            'has_picture' : False,
+            'is_active' : True,
+            'content_filter_enabled' : False
+        }
+
+        user2 = {
+            'id': 2,
+            'email': 'prova2@mail.com',
+            'firstname': 'Maurizio',
+            'lastname': 'Costanzo',
+            'date_of_birth': '1938-08-28',
+            'lottery_points': 0,
+            'has_picture': False,
+            'is_active': True,
+            'content_filter_enabled': False
+        }
+
+        user3 = {
+            'id': 3,
+            'email': 'prova3@mail.com',
+            'firstname': 'Maurizio',
+            'lastname': 'Costanzo',
+            'date_of_birth': '1938-08-28',
+            'lottery_points': 0,
+            'has_picture': False,
+            'is_active': True,
+            'content_filter_enabled': False
+        }
+
+        # json variables
+        json_recipient_requester = {'requester_id':user2['id']}
+        json_not_recipient_requester = {'requester_id':user1['id']}
+        json_unexisting_recipient_requester = {'requester_id':user3['id']}
+
+        # 500
+        response = app.put('/messages/received/3/hide', json = json_recipient_requester)
+        self.assertEqual(response.status_code,500)
+        
+        # mocking user
+        responses.add(responses.GET, "%s/users/%s" % (USERS_ENDPOINT, str(1)),
+                  json={'status': 'Current user is present',
+                        'user': user1}, status=200)
+        responses.add(responses.GET, "%s/users/%s" % (USERS_ENDPOINT, str(2)),
+                  json={'status': 'Current user is present',
+                        'user': user2}, status=200)
+        responses.add(responses.GET, "%s/users/%s" % (USERS_ENDPOINT, str(3)),
+                  json={'status': 'Current user is not present',
+                        'user': user3}, status=404)
+
+        # 404 not existing user
+        response = app.put('/messages/received/3/hide', json = json_unexisting_recipient_requester)
+        self.assertEqual(response.status_code,404)
+
+        # 403 not recipient
+        response = app.put('/messages/received/3/hide', json = json_not_recipient_requester)
+        self.assertEqual(response.status_code,403)
+
+        # mocking blacklist ??
+
+        # success report
+        response = app.put('/messages/received/3/hide', json = json_recipient_requester)
+        self.assertEqual(response.status_code,200)
+
+        # 403 in reporting again
+        response = app.put('/messages/received/3/hide', json = json_recipient_requester)
+        self.assertEqual(response.status_code,403)

@@ -40,19 +40,19 @@ class MessageLogic:
 
         try:
             data = {'requester_id': message.sender_id}
+
             response = requests.get("%s/users/%s" % (USERS_ENDPOINT, str(message.sender_id)),
                                     timeout=REQUESTS_TIMEOUT_SECONDS,
                                     json=data)
 
             if response.status_code != 200:
-                return None, 500
+                return None, response.status_code
 
             sender_json = response.json()['user']
             sender = User.build_from_json(sender_json)
 
         except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
             return None, 500
-
 
         # check if the message is already read. If not, set it as read and send a notification to the sender
         if not message_recipient.is_read:
@@ -82,8 +82,7 @@ class MessageLogic:
 
             is_sender_in_blacklist = message.sender_id in blacklist
 
-        except (requests.exceptions.ConnectionError,
-                requests.exceptions.Timeout):
+        except (requests.exceptions.ConnectionError,requests.exceptions.Timeout):
             return None, 500
 
         message_json = message.serialize()
@@ -158,7 +157,7 @@ class MessageLogic:
                                         json=data)
 
                 if response.status_code != 200:
-                    return None, 500
+                    return None, response.status_code
 
                 recipient_json = response.json()['user']
                 recipient = User.build_from_json(recipient_json)
@@ -228,7 +227,7 @@ class MessageLogic:
                                         json=data)
 
                 if response.status_code != 200:
-                    return None, 500
+                    return None, response.status_code
 
                 recipient_json = response.json()['user']
                 recipient = User.build_from_json(recipient_json)
