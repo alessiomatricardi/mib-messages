@@ -5,6 +5,12 @@ import responses
 from flask_sqlalchemy import SQLAlchemy
 import datetime
 from mib.logic.user import User
+import os
+import base64
+from io import BytesIO
+from PIL import Image
+
+basepath = os.path.join(os.getcwd(), 'mib', 'static', 'attachments')
 
 tested_app = create_app()
 
@@ -94,13 +100,13 @@ class LogicTest(unittest.TestCase):
             MessageManager.create_message_recipient(message_recipient)
 
             self.test_message_id = message.id
-            
+        
             # drafts message from 10 to 11
             draft = Message()
             draft.sender_id = 10
             draft.content = 'Draft: from 10 to 11'
             draft.deliver_time = datetime.datetime.fromisoformat('2010-10-25 15:00')
-            draft.image = '' 
+            draft.image = 'attachment.jpg' 
             draft.is_sent = False
             draft.is_delivered = False
 
@@ -114,7 +120,7 @@ class LogicTest(unittest.TestCase):
 
             MessageManager.create_message_recipient(draft_recipient)
 
-            self.test_draft_id = message.id
+            self.test_draft_id = draft.id
 
     @responses.activate
     def test_01_get_received_message(self):
@@ -260,7 +266,6 @@ class LogicTest(unittest.TestCase):
             result, code = self.msg_logic.get_draft_message(draft_message,requester)
             self.assertEqual(code,200)
 
-
     @responses.activate
     def test_03_get_pending_or_delivered_message(self):
         from mib.dao.message_manager import MessageManager
@@ -331,7 +336,6 @@ class LogicTest(unittest.TestCase):
             result, code = self.msg_logic.get_pending_or_delivered_message(delivered_message,requester_content_filter)
             self.assertEqual(code,200)
 
-    
     @responses.activate
     def test_04_delete_message(self):
         from mib.dao.message_manager import MessageManager
@@ -347,13 +351,19 @@ class LogicTest(unittest.TestCase):
             wrong_requester =  User.build_from_json(self.recipient_json)
 
             # message not found
-            result, code = self.msg_logic.delete_message(non_existing_message,requester)
+            result, code = self.msg_logic.delete_message(non_existing_message,requester.id)
             self.assertEqual(code,404)
 
             # 403 sender not corresponing
-            result, code = self.msg_logic.delete_message(draft_message,wrong_requester)
+            result, code = self.msg_logic.delete_message(draft_message,wrong_requester.id)
             self.assertEqual(code,403)
 
-            # 200 success
-            result, code = self.msg_logic.delete_message(draft_message,requester)
-            self.assertEqual(code,403)
+            # 500 failure because we actually didn't save the attached image to check the unavailabity in filesystem 
+            result, code = self.msg_logic.delete_message(draft_message,requester.id)
+            self.assertEqual(code,500)
+
+            draft_message.image=''
+
+            # 200 failure because we actually didn't save the attached image
+            result, code = self.msg_logic.delete_message(draft_message,requester.id)
+            self.assertEqual(code,200)

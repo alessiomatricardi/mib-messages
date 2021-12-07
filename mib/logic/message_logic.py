@@ -7,6 +7,8 @@ from mib import app
 from mib.emails import send_email
 from mib.content_filter import censure_content
 from .user import User
+import os
+
 
 USERS_ENDPOINT = app.config['USERS_MS_URL']
 BLACKLIST_ENDPOINT = app.config['BLACKLIST_MS_URL']
@@ -286,6 +288,19 @@ class MessageLogic:
 
         for recipient_id in recipients:
             MessageManager.remove_message_recipient(message_id, recipient_id)
+
+        if message.image!='':
+            filename = message.image
+            path=os.path.join(os.getcwd(),'mib','static','attachments',str(message.id))
+            try:
+                os.remove(os.path.join(path,filename))
+                os.rmdir(path)
+            except Exception:
+                response_object = {
+                'status': 'failure',
+                'description': 'Error in deleting attachment'
+                }
+                return jsonify(response_object), 500
 
         MessageManager.remove_message(message)
 
