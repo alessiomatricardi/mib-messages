@@ -849,6 +849,13 @@ def modify_draft_message(message_id):
 
     draft_message = MessageManager.retrieve_message_by_id(DRAFT_LABEL, message_id)
 
+    if not draft_message:
+        response_object = {
+            'status': 'failure',
+            'description': 'Message not found'
+        }
+        return jsonify(response_object), 404
+
     # check if the user_id is the sender of the draft message
     if draft_message.sender_id != requester_id:
         response_object = {
@@ -1061,7 +1068,28 @@ def delete_draft_message(message_id):
     # retrieving the message, if exists
     message = MessageManager.retrieve_message_by_id(DRAFT_LABEL, message_id)
 
-    return MessageLogic.delete_message(message, requester_id)
+    if not message:
+        response_object = {
+            'status': 'failure',
+            'description': 'Message not found'
+        }
+        return jsonify(response_object), 404
+
+    # check if the user_id is the sender of the draft message
+    if message.sender_id != requester_id:
+        response_object = {
+            'status': 'failure',
+            'description': 'Forbidden: user is not the sender of this message'
+        }
+        return jsonify(response_object), 403
+
+    MessageLogic.delete_message(message, requester_id)
+
+    response_object = {
+        'status': 'success',
+        'description': 'Message successfully deleted'
+    }
+    return jsonify(response_object), 200
 
 
 def delete_pending_message(message_id):
@@ -1069,8 +1097,6 @@ def delete_pending_message(message_id):
     # get info about the requester
     data = request.get_json()
     requester_id = data.get('requester_id')
-
-    user = None
 
     # check if the requester_id exists
     try:
@@ -1083,8 +1109,6 @@ def delete_pending_message(message_id):
 
             return response.json(), response.status_code
 
-        user = response.json()['user']
-
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
         response_object = {
             'status': 'failure',
@@ -1092,23 +1116,23 @@ def delete_pending_message(message_id):
         }
         return jsonify(response_object), 500
 
-    message = None
     # retrieving the message, if exists
     message = MessageManager.retrieve_message_by_id(PENDING_LABEL, message_id)
 
-    if message is None:
+    if not message:
         response_object = {
-            'status':'failure',
-            'description':'Pending message not found the sender'
+            'status': 'failure',
+            'description': 'Message not found'
         }
-        return response_object, 404 
+        return jsonify(response_object), 404
 
-    if user['id'] != message.sender_id:
-        response_object= {
-            'status':'failure',
-            'description':'Not the sender'
+    # check if the user_id is the sender of the draft message
+    if message.sender_id != requester_id:
+        response_object = {
+            'status': 'failure',
+            'description': 'Forbidden: user is not the sender of this message'
         }
-        return response_object, 403    
+        return jsonify(response_object), 403    
     
     try: 
         data = {'requester_id': requester_id}
@@ -1127,5 +1151,11 @@ def delete_pending_message(message_id):
         }
         return jsonify(response_object), 500
 
-    return MessageLogic.delete_message(message,requester_id)
+    MessageLogic.delete_message(message, requester_id)
+
+    response_object = {
+        'status': 'success',
+        'description': 'Message successfully deleted'
+    }
+    return jsonify(response_object), 200
     
