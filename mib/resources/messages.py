@@ -68,7 +68,12 @@ def new_message():
 
             return response.json(), response.status_code
         
-        blacklist = response.json()['blacklist']
+        blocked = response.json()['blocked']
+        blocking = response.json()['blocking']
+        for ob in blocked:
+            blacklist.append(ob)
+        for ob in blocking:
+            blacklist.append(ob)
 
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
         response_object = {
@@ -808,7 +813,12 @@ def modify_draft_message(message_id):
 
             return response.json(), response.status_code
         
-        blacklist = response.json()['blacklist']
+        blocked = response.json()['blocked']
+        blocking = response.json()['blocking']
+        for ob in blocked:
+            blacklist.append(ob)
+        for ob in blocking:
+            blacklist.append(ob)
 
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
         response_object = {
