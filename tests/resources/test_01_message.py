@@ -101,7 +101,8 @@ class ResourcesTest(unittest.TestCase):
 
         responses.add(responses.GET, "%s/blacklist" % (BLACKLIST_ENDPOINT),
                 json={
-                    "blacklist": [3],
+                    "blocked": [3],
+                    "blocking": [],
                     "description": "Blacklist successfully retrieved",
                     "status": "success"
                 }, status=200)
@@ -127,7 +128,8 @@ class ResourcesTest(unittest.TestCase):
 
         responses.add(responses.GET, "%s/blacklist" % (BLACKLIST_ENDPOINT),
                 json={
-                    "blacklist": [3],
+                    "blocked": [3],
+                    "blocking": [],
                     "description": "Blacklist successfully retrieved",
                     "status": "success"
                 }, status=200)
@@ -141,7 +143,8 @@ class ResourcesTest(unittest.TestCase):
 
         responses.add(responses.GET, "%s/blacklist" % (BLACKLIST_ENDPOINT),
                 json={
-                    "blacklist": [3],
+                    "blocked": [3],
+                    "blocking": [],
                     "description": "Blacklist successfully retrieved",
                     "status": "success"
                 }, status=200)
@@ -291,7 +294,7 @@ class ResourcesTest(unittest.TestCase):
 
         # mock blacklist
         responses.add(responses.GET, "%s/blacklist" % (BLACKLIST_ENDPOINT),
-        json={'blacklist': [40,45,56]}, status=200)
+        json={'blocked': [40,45,56],'blocking':[]}, status=200)
 
         # user 2 now exists
         responses.replace(responses.GET, "%s/users/%s" % (USERS_ENDPOINT, str(2)),
@@ -428,7 +431,7 @@ class ResourcesTest(unittest.TestCase):
 
         # mocking blacklist
         responses.add(responses.GET, "%s/blacklist" % (BLACKLIST_ENDPOINT),
-        json={'blacklist': [40,45,56]}, status=200)
+        json={'blocked': [40,45,56],'blocking':[]}, status=200)
 
         # failure on retrieving pending message having blacklist ms available but requester is not sender
         response = app.get('/messages/pending/1', json = json_existing_requester_not_the_sender)
@@ -604,8 +607,7 @@ class ResourcesTest(unittest.TestCase):
 
         # mocking blacklist
         responses.add(responses.GET, "%s/blacklist" % (BLACKLIST_ENDPOINT),
-        json={'blacklist': [40,45,56], "description": "Blacklist successfully retrieved",
-                    "status": "success"}, status=200)
+        json={'blocked': [40,45,56],'blocking':[]}, status=200)
                
         # failure 404 on updating a non existing draft message
         response = app.put('/messages/drafts/10000', json = json_modify_draft)
@@ -677,8 +679,7 @@ class ResourcesTest(unittest.TestCase):
         # now user 4 is in the blacklist
         # mocking blacklist
         responses.replace(responses.GET, "%s/blacklist" % (BLACKLIST_ENDPOINT),
-        json={'blacklist': [4,40,45,56], "description": "Blacklist successfully retrieved",
-                    "status": "success"}, status=200)
+        json={'blocked': [4,40,45,56],'blocking':[]}, status=200)
 
         # success on updating n.3, user4 is still a selected recipient, but is going to be removed because inside blacklist
         response = app.put('/messages/drafts/2', json = json_modify_draft)

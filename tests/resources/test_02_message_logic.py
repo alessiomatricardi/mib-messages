@@ -173,7 +173,7 @@ class LogicTest(unittest.TestCase):
             
             # mocking blacklist but it returns 500
             responses.add(responses.GET, "%s/blacklist" % (BLACKLIST_ENDPOINT),
-                    json={'status': 'Current user present','blacklist':[]}, status=500)
+                    json={'status': 'Current user present','blocked':[],'blocking':[]}, status=500)
 
             # failure 500 when blacklist returns an Internal Server Error
             result, code = self.msg_logic.get_received_message(received_message,requester)
@@ -181,7 +181,7 @@ class LogicTest(unittest.TestCase):
             
             # now the blacklist microservice returns 200 
             responses.replace(responses.GET, "%s/blacklist" % (BLACKLIST_ENDPOINT),
-                    json={'status': 'Current user present','blacklist':[]}, status=200)
+                    json={'status': 'Current user present','blocked':[],'blocking':[]}, status=200)
             
             # success with content filter disable
             result, code = self.msg_logic.get_received_message(received_message,requester)
@@ -229,7 +229,7 @@ class LogicTest(unittest.TestCase):
 
             # mocking blacklist
             responses.add(responses.GET, "%s/blacklist" % (BLACKLIST_ENDPOINT),
-                    json={'status': 'Current user present','blacklist':[]}, status=500)
+                    json={'status': 'Current user present','blocked':[],'blocking':[]}, status=500)
 
             # 500 when blacklist returns an Internal Server Error
             result, code = self.msg_logic.get_draft_message(draft_message,requester)
@@ -237,7 +237,7 @@ class LogicTest(unittest.TestCase):
 
             # mocking blacklist
             responses.replace(responses.GET, "%s/blacklist" % (BLACKLIST_ENDPOINT),
-                    json={'status': 'Current user present','blacklist':[]}, status=200)
+                    json={'status': 'Current user present','blocked':[],'blocking':[]}, status=200)
 
             # 500 users not active while checking that the recipients previously selected exist
             result, code = self.msg_logic.get_draft_message(draft_message,requester)
@@ -248,7 +248,7 @@ class LogicTest(unittest.TestCase):
                     json={'status': 'Current user present','user':self.sender_json}, status=200)
 
             responses.add(responses.GET, "%s/users/%s" % (USERS_ENDPOINT, str(11)),
-                    json={'status': 'Current user present','user':self.recipient_json}, status=404)
+                    json={'status': 'Current user not present','user':self.recipient_json}, status=404)
 
             # fail 404 when recipient not found
             result, code = self.msg_logic.get_draft_message(draft_message,requester)
@@ -260,7 +260,7 @@ class LogicTest(unittest.TestCase):
 
             # previous recipients are either in the blacklist or not active
             responses.replace(responses.GET, "%s/blacklist" % (BLACKLIST_ENDPOINT),
-                    json={'status': 'Current user present','blacklist':[11]}, status=200)
+                    json={'status': 'Current user present','blocked':[11],'blocking':[]}, status=200)
 
             # 200 success
             result, code = self.msg_logic.get_draft_message(draft_message,requester)
@@ -295,7 +295,7 @@ class LogicTest(unittest.TestCase):
 
             # mocking blacklist
             responses.add(responses.GET, "%s/blacklist" % (BLACKLIST_ENDPOINT),
-                    json={'status': 'Current user present','blacklist':[]}, status=500)
+                    json={'status': 'Current user present','blocked':[],'blocking':[]}, status=500)
 
             # 500 when blacklist returns an Internal Server Error
             result, code = self.msg_logic.get_pending_or_delivered_message(delivered_message,requester)
@@ -303,7 +303,7 @@ class LogicTest(unittest.TestCase):
 
             # mocking blacklist
             responses.replace(responses.GET, "%s/blacklist" % (BLACKLIST_ENDPOINT),
-                    json={'status': 'Current user present','blacklist':[]}, status=200)
+                    json={'status': 'Current user present','blocked':[],'blocking':[]}, status=200)
 
             # 500 users not active while checking that the recipients previously selected exist
             result, code = self.msg_logic.get_pending_or_delivered_message(delivered_message,requester)
@@ -326,7 +326,7 @@ class LogicTest(unittest.TestCase):
 
             # previous recipients are either in the blacklist or not active
             responses.replace(responses.GET, "%s/blacklist" % (BLACKLIST_ENDPOINT),
-                    json={'status': 'Current user present','blacklist':[11]}, status=200)
+                    json={'status': 'Current user present','blocked':[11],'blocking':[]}, status=200)
 
             # now the sender has content filter enabled 
             responses.replace(responses.GET, "%s/users/%s" % (USERS_ENDPOINT, str(10)),
