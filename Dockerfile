@@ -10,6 +10,8 @@ LABEL description="Message in a Bottle User Microservice"
 COPY . /app
 # setting the workdir
 WORKDIR /app
+# set timezone to Europe/Rome
+ENV TZ=Europe/Rome
 
 # installing all requirements
 RUN ["pip", "install", "-r", "requirements.prod.txt"]

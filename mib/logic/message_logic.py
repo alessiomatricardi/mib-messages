@@ -7,6 +7,8 @@ from mib import app
 from mib.emails import send_email
 from mib.content_filter import censure_content
 from .user import User
+import os
+
 
 USERS_ENDPOINT = app.config['USERS_MS_URL']
 BLACKLIST_ENDPOINT = app.config['BLACKLIST_MS_URL']
@@ -16,7 +18,7 @@ REQUESTS_TIMEOUT_SECONDS = app.config['REQUESTS_TIMEOUT_SECONDS']
 class MessageLogic:
 
     @staticmethod
-    def get_received_message(message : Message, requester : User):
+    def get_received_message(message : Message, requester : User, read_message : bool = False):
 
         requester_id = requester.id
 
@@ -40,12 +42,13 @@ class MessageLogic:
 
         try:
             data = {'requester_id': message.sender_id}
+
             response = requests.get("%s/users/%s" % (USERS_ENDPOINT, str(message.sender_id)),
                                     timeout=REQUESTS_TIMEOUT_SECONDS,
                                     json=data)
 
             if response.status_code != 200:
-                return None, 500
+                return None, response.status_code
 
             sender_json = response.json()['user']
             sender = User.build_from_json(sender_json)
@@ -53,9 +56,8 @@ class MessageLogic:
         except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
             return None, 500
 
-
         # check if the message is already read. If not, set it as read and send a notification to the sender
-        if not message_recipient.is_read:
+        if read_message and not message_recipient.is_read:
 
             MessageManager.set_message_as_read(message_recipient)
 
@@ -65,6 +67,8 @@ class MessageLogic:
             email = sender.email
 
             send_email(email, email_message)
+
+        blacklist = []
 
         # check if the sender is in our blacklist, in order to don't permit to see his profile
         try:
@@ -78,12 +82,16 @@ class MessageLogic:
                 return None, 500
 
             # status OK, retrieve blacklist
-            blacklist = response.json()['blacklist']
+            blocked = response.json()['blocked']
+            blocking = response.json()['blocking']
+            for ob in blocked:
+                blacklist.append(ob)
+            for ob in blocking:
+                blacklist.append(ob)
 
             is_sender_in_blacklist = message.sender_id in blacklist
 
-        except (requests.exceptions.ConnectionError,
-                requests.exceptions.Timeout):
+        except (requests.exceptions.ConnectionError,requests.exceptions.Timeout):
             return None, 500
 
         message_json = message.serialize()
@@ -95,6 +103,9 @@ class MessageLogic:
 
         # store that the sender is into blacklist or not
         message_json['is_sender_in_blacklist'] = is_sender_in_blacklist
+
+        # store that the sender is active or not
+        message_json['is_sender_active'] = sender.is_active
 
         # store that the message is read or not
         message_json['is_read'] = message_recipient.is_read
@@ -139,7 +150,12 @@ class MessageLogic:
             if response.status_code != 200:
                 return None, 500
 
-            blacklist = response.json()['blacklist']
+            blocked = response.json()['blocked']
+            blocking = response.json()['blocking']
+            for ob in blocked:
+                blacklist.append(ob)
+            for ob in blocking:
+                blacklist.append(ob)
 
         except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
             return None, 500
@@ -158,7 +174,7 @@ class MessageLogic:
                                         json=data)
 
                 if response.status_code != 200:
-                    return None, 500
+                    return None, response.status_code
 
                 recipient_json = response.json()['user']
                 recipient = User.build_from_json(recipient_json)
@@ -210,7 +226,12 @@ class MessageLogic:
             if response.status_code != 200:
                 return None, 500
 
-            blacklist = response.json()['blacklist']
+            blocked = response.json()['blocked']
+            blocking = response.json()['blocking']
+            for ob in blocked:
+                blacklist.append(ob)
+            for ob in blocking:
+                blacklist.append(ob)
 
         except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
             return None, 500
@@ -228,7 +249,7 @@ class MessageLogic:
                                         json=data)
 
                 if response.status_code != 200:
-                    return None, 500
+                    return None, response.status_code
 
                 recipient_json = response.json()['user']
                 recipient = User.build_from_json(recipient_json)
@@ -288,6 +309,19 @@ class MessageLogic:
         for recipient_id in recipients:
             MessageManager.remove_message_recipient(message_id, recipient_id)
 
+        if message.image!='':
+            filename = message.image
+            path=os.path.join(os.getcwd(),'mib','static','attachments',str(message.id))
+            try:
+                os.remove(os.path.join(path,filename))
+                os.rmdir(path)
+            except Exception:
+                response_object = {
+                'status': 'failure',
+                'description': 'Error in deleting attachment'
+                }
+                return jsonify(response_object), 500
+
         MessageManager.remove_message(message)
 
         response_object = {
@@ -295,3 +329,5 @@ class MessageLogic:
             'description': 'Message successfully deleted'
         }
         return jsonify(response_object), 200
+
+   

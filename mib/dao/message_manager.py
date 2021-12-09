@@ -1,5 +1,6 @@
 from mib.dao.manager import Manager
 from mib.models import Message, Message_Recipient
+from sqlalchemy import and_
 import datetime
 
 from typing import List
@@ -99,9 +100,9 @@ class MessageManager(Manager):
         Manager.check_none(message_id=message_id)
         Manager.check_none(recipient_id=recipient_id)
 
-        recipient = Message_Recipient.query.filter(
+        recipient = Message_Recipient.query.filter(and_(
             Message_Recipient.id == message_id,
-            Message_Recipient.recipient_id == recipient_id
+            Message_Recipient.recipient_id == recipient_id)
         ).first()
 
         return recipient
@@ -139,7 +140,7 @@ class MessageManager(Manager):
 
     @staticmethod
     def remove_message(message: Message):
-        Manager.delete(message)
+        Manager.delete(message=message)
 
     @staticmethod
     def remove_message_recipient(message_id, recipient_id):
@@ -149,4 +150,4 @@ class MessageManager(Manager):
 
         message_recipient = MessageManager.retrieve_message_recipient(message_id, recipient_id)
 
-        Manager.delete(message_recipient)
+        Manager.delete(message_recipient=message_recipient)

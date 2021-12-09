@@ -1,8 +1,8 @@
 # Databases
 *.db
 
-### Don't save all pictures ###
-mib/static/pictures/*
+### Don't save all attachments ###
+mib/static/attachments/*
 
 ### Default profile pictures should be saved ###
 !mib/static/pictures/default.jpeg
