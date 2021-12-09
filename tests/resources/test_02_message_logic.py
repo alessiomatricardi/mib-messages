@@ -1,14 +1,10 @@
 import unittest
 from mib import create_app
 import responses
-#from mib import db
 from flask_sqlalchemy import SQLAlchemy
 import datetime
 from mib.logic.user import User
 import os
-import base64
-from io import BytesIO
-from PIL import Image
 
 basepath = os.path.join(os.getcwd(), 'mib', 'static', 'attachments')
 

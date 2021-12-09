@@ -223,14 +223,15 @@ def get_received_bottlebox():
 
     for message in messages:
         # get all information we need
-        message_json, status_code = MessageLogic.get_received_message(message, requester)
+        message_json, status_code = MessageLogic.get_received_message(message, requester, False)
 
         # check status code
         if status_code == 200:
             messages_json.append(message_json)
         else:
             response_object = {
-                'status': 'failure'              
+                'status': 'failure',
+                'description' : 'Message not found'
             }
             return jsonify(response_object), status_code
 
@@ -441,7 +442,7 @@ def get_received_message(message_id):
     # retrieve the message, if exists
     message = MessageManager.retrieve_message_by_id(RECEIVED_LABEL, message_id)
 
-    message_json, status_code = MessageLogic.get_received_message(message, requester)
+    message_json, status_code = MessageLogic.get_received_message(message, requester, True)
 
     if status_code == 403 or status_code ==404:
         response_object = {
@@ -635,6 +636,77 @@ def get_delivered_message(message_id):
     return jsonify(response_object), status_code
 
 
+def get_message_attachment(label, message_id):
+    
+    data = request.get_json()
+    requester_id = data.get('requester_id')
+
+    # check if the requester_id exists
+    try:
+        data = {'requester_id': requester_id}
+        response = requests.get("%s/users/%s" % (USERS_ENDPOINT, str(requester_id)),
+                                timeout=REQUESTS_TIMEOUT_SECONDS,
+                                json=data)
+
+        if response.status_code != 200:
+
+            return response.json(), response.status_code
+
+    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+        response_object = {
+            'status': 'failure',
+            'description': 'Error in retrieving user',
+        }
+        return jsonify(response_object), 500
+
+    message = MessageManager.retrieve_message_by_id(label, message_id)
+
+    if message is None:
+        response_object = {
+            'status': 'failure',
+            'description': 'Message not found',
+        }
+        return jsonify(response_object), 404
+    
+    if message.sender_id != requester_id:
+        if label != 'received' or MessageManager.retrieve_message_recipient(message_id,requester_id) is None:
+            response_object = {
+                'status': 'failure',
+                'description': 'Forbidden',
+            }
+            return jsonify(response_object), 403
+    
+    if message.image == '':
+        response_object = {
+            'status': 'failure',
+            'description': 'Attachment not found',
+        }
+        return jsonify(response_object), 404
+
+
+    path_to_retrieve = os.path.join(os.getcwd(), 'mib', 'static', 'attachments', str(message.id), message.image)
+
+    data_img = None
+    try:
+        with open(path_to_retrieve, mode='rb') as image:
+            data_img = base64.encodebytes(image.read()).decode('utf-8')
+    except Exception:
+        response_object = {
+            'status': 'failure',
+            'description': 'Error while retrieve the image',
+        }
+        return jsonify(response_object), 500
+
+    response_object = {
+        'status': 'success',
+        'description' : 'Attachment retrieved',
+        'image': data_img,
+        'image_filename': message.image
+    }
+
+    return jsonify(response_object), 200
+
+
 # UPDATE OPERATIONS
 
 
@@ -760,7 +832,6 @@ def modify_draft_message(message_id):
     recipients = data.get('recipients')
     image_base64 = data.get('image')
     image_filename = data.get('image_filename')
-    # TODO SUPPORT IT
     delete_image = data.get('delete_image')
     is_sent = data.get('is_sent')
 
@@ -890,10 +961,10 @@ def modify_draft_message(message_id):
         else:
             # remove it from actual recipients
             actual_recipient_ids.remove(recipient_id)
-    
+
     # remaining ids should be removed because they are no more 'valid'
     for recipient_id in actual_recipient_ids:
-        MessageManager.remove_message_recipient(draft_message.id, recipient.id)
+        MessageManager.remove_message_recipient(draft_message.id, recipient_id)
 
 
 
@@ -1072,7 +1143,7 @@ def delete_pending_message(message_id):
             'status': 'failure',
             'description': 'Forbidden: user is not the sender of this message'
         }
-        return jsonify(response_object), 403    
+        return jsonify(response_object), 403
     
     try: 
         data = {'requester_id': requester_id}
@@ -1097,74 +1168,4 @@ def delete_pending_message(message_id):
         'status': 'success',
         'description': 'Message successfully deleted'
     }
-    return jsonify(response_object), 200
-    
-def get_message_attachment(label, message_id):
-    
-    data = request.get_json()
-    requester_id = data.get('requester_id')
-
-    # check if the requester_id exists
-    try:
-        data = {'requester_id': requester_id}
-        response = requests.get("%s/users/%s" % (USERS_ENDPOINT, str(requester_id)),
-                                timeout=REQUESTS_TIMEOUT_SECONDS,
-                                json=data)
-
-        if response.status_code != 200:
-
-            return response.json(), response.status_code
-
-    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
-        response_object = {
-            'status': 'failure',
-            'description': 'Error in retrieving user',
-        }
-        return jsonify(response_object), 500
-
-    message = MessageManager.retrieve_message_by_id(label, message_id)
-
-    if message is None:
-        response_object = {
-            'status': 'failure',
-            'description': 'Message not found',
-        }
-        return jsonify(response_object), 404
-    
-    if message.sender_id != requester_id:
-        if label != 'received' or MessageManager.retrieve_message_recipient(message_id,requester_id) is None:
-            response_object = {
-                'status': 'failure',
-                'description': 'Forbidden',
-            }
-            return jsonify(response_object), 403
-    
-    if message.image == '':
-        response_object = {
-            'status': 'failure',
-            'description': 'Attachment not found',
-        }
-        return jsonify(response_object), 404
-
-
-    path_to_retrieve = os.path.join(os.getcwd(), 'mib', 'static', 'attachments', str(message.id), message.image)
-
-    data_img = None
-    try:
-        with open(path_to_retrieve, mode='rb') as image:
-            data_img = base64.encodebytes(image.read()).decode('utf-8')
-    except Exception:
-        response_object = {
-            'status': 'failure',
-            'description': 'Error while retrieve the image',
-        }
-        return jsonify(response_object), 500
-
-    response_object = {
-        'status': 'success',
-        'description' : 'Attachment retrieved',
-        'image': data_img,
-        'image_filename': message.image
-    }
-
     return jsonify(response_object), 200

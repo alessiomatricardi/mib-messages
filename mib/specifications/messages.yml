@@ -961,6 +961,7 @@ components:
         - image
         - is_read
         - is_reported
+        - is_sender_active
         - is_sender_in_blacklist
         - sender_email
         - sender_firstname
@@ -989,6 +990,9 @@ components:
         is_reported:
           type: boolean
           description: True if the message has been reported
+        is_sender_active:
+          type: boolean
+          description: True if the sender is active
         is_sender_in_blacklist:
           type: boolean
           description: True if the sender is into the user blacklist

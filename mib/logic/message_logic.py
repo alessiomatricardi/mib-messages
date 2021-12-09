@@ -18,7 +18,7 @@ REQUESTS_TIMEOUT_SECONDS = app.config['REQUESTS_TIMEOUT_SECONDS']
 class MessageLogic:
 
     @staticmethod
-    def get_received_message(message : Message, requester : User):
+    def get_received_message(message : Message, requester : User, read_message : bool = False):
 
         requester_id = requester.id
 
@@ -57,7 +57,7 @@ class MessageLogic:
             return None, 500
 
         # check if the message is already read. If not, set it as read and send a notification to the sender
-        if not message_recipient.is_read:
+        if read_message and not message_recipient.is_read:
 
             MessageManager.set_message_as_read(message_recipient)
 
@@ -103,6 +103,9 @@ class MessageLogic:
 
         # store that the sender is into blacklist or not
         message_json['is_sender_in_blacklist'] = is_sender_in_blacklist
+
+        # store that the sender is active or not
+        message_json['is_sender_active'] = sender.is_active
 
         # store that the message is read or not
         message_json['is_read'] = message_recipient.is_read
