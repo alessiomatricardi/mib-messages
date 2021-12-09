@@ -9,6 +9,7 @@ import connexion
 from flask_environments import Environments
 from flask_sqlalchemy import SQLAlchemy
 import logging
+from config import ProdConfig
 
 db = None
 debug_toolbar = None
@@ -67,7 +68,8 @@ def create_app():
 
     # we need to populate the db
     with app.app_context():
-        db.create_all()
+        if flask_env == 'testing':
+            db.create_all()
 
     # create the directory 'static' if it doesn't exist
     if not os.path.exists(STATIC_DIR):
