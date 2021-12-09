@@ -1132,11 +1132,12 @@ def get_message_attachment(label, message_id):
         return jsonify(response_object), 404
     
     if message.sender_id != requester_id:
-        response_object = {
-            'status': 'failure',
-            'description': 'Forbidden',
-        }
-        return jsonify(response_object), 403
+        if label != 'received' or MessageManager.retrieve_message_recipient(message_id,requester_id) is None:
+            response_object = {
+                'status': 'failure',
+                'description': 'Forbidden',
+            }
+            return jsonify(response_object), 403
     
     if message.image == '':
         response_object = {
