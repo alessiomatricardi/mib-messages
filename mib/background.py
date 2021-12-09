@@ -20,11 +20,12 @@ MIN_LOTTERY_POINTS = 1
 MAX_LOTTERY_POINTS = 5
 
 if os.environ.get('DOCKER_IN_USE') is not None:
-    BACKEND = BROKER = 'redis://redis:6379'
+    BACKEND = BROKER = 'redis://redis_messages:6378'
 else:
-    BACKEND = BROKER = 'redis://localhost:6379'
+    BACKEND = BROKER = 'redis://localhost:6378'
 
 celery = Celery(__name__, backend=BACKEND, broker=BROKER) 
+
 
 celery.conf.timezone = 'Europe/Rome' # set timezone to Rome
 
@@ -36,7 +37,7 @@ celery.conf.timezone = 'Europe/Rome' # set timezone to Rome
 celery.conf.beat_schedule = {
     'deliver_message_and_send_notification': {
         'task': 'deliver_message_and_send_notification',    # name of the task to execute
-        'schedule': crontab()                               # frequency of execution (every 1 min)
+        'schedule': 20.0 # crontab()                               # frequency of execution (every 1 min)
     },
 }
  

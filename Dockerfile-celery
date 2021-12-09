@@ -19,8 +19,8 @@ WORKDIR /app
 ENV DOCKER_IN_USE=yes
 
 # RUN apk add build-base py-pip jpeg-dev zlib-dev
-RUN ["apk", "add", "build-base", "py-pip", "jpeg-dev", "zlib-dev"]  
-ENV LIBRARY_PATH=/lib:/usr/lib
+#RUN ["apk", "add", "build-base", "py-pip", "jpeg-dev", "zlib-dev"]  
+#ENV LIBRARY_PATH=/lib:/usr/lib
 
 # installing all requirements
 RUN ["pip", "install", "-r", "requirements.prod.txt"]
