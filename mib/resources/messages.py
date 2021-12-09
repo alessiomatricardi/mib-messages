@@ -162,13 +162,14 @@ def new_message():
         try:
 
             img = Image.open(image_data)
-            path_to_save = os.path.join(basepath,
-                                    str(message.id), image_filename)
+            path_to_save = os.path.join(basepath, str(message.id), image_filename)
             
             img.save(path_to_save, quality=100, subsampling=0)
 
             # save inside db new attachment filename
             message.image = image_filename
+
+            MessageManager.update_message(message)
 
         except Exception:
             response_object = {
