@@ -10,7 +10,7 @@ servers:
 paths:
   /messages:
     post:
-      summary: Creating a new Message
+      summary: Create a new Message
       tags: 
         - Messages 
       operationId: mib.resources.messages.new_message
@@ -766,6 +766,80 @@ paths:
           description: Forbidden
         default:
           description: An error occured while retrieving the message
+
+  /messages/{label}/{message_id}/attachment:
+    get:
+      tags: [ Messages ]
+      summary: Get attachment of a message
+      operationId: mib.resources.messages.get_message_attachment
+      parameters:
+        - name: label
+          description: Message label. It can be received, drafts, pending or delivered
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: message_id
+          description: Message id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequesterID'
+      responses:
+        200:
+          description: Return attachment
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    description: "It can be failure or success"
+                  description:
+                    type: string
+                    description: "Human readable result"
+                  image:
+                    type: string
+                    format: base64
+                  image_filename:
+                    type: string
+        403:
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    description: "It can be failure or success"
+                  description:
+                    type: string
+                    description: "Human readable result"
+        404:
+          description: Message or attachment not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    description: "It can be failure or success"
+                  description:
+                    type: string
+                    description: "Human readable result"
+        default:
+          description: An error occured while retrieving the message
+  
 
 components:
   schemas:

@@ -1098,3 +1098,71 @@ def delete_pending_message(message_id):
     }
     return jsonify(response_object), 200
     
+def get_message_attachment(label, message_id):
+    
+    data = request.get_json()
+    requester_id = data.get('requester_id')
+
+    # check if the requester_id exists
+    try:
+        data = {'requester_id': requester_id}
+        response = requests.get("%s/users/%s" % (USERS_ENDPOINT, str(requester_id)),
+                                timeout=REQUESTS_TIMEOUT_SECONDS,
+                                json=data)
+
+        if response.status_code != 200:
+
+            return response.json(), response.status_code
+
+    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+        response_object = {
+            'status': 'failure',
+            'description': 'Error in retrieving user',
+        }
+        return jsonify(response_object), 500
+
+    message = MessageManager.retrieve_message_by_id(label, message_id)
+
+    if message is None:
+        response_object = {
+            'status': 'failure',
+            'description': 'Message not found',
+        }
+        return jsonify(response_object), 404
+    
+    if message.sender_id != requester_id:
+        response_object = {
+            'status': 'failure',
+            'description': 'Forbidden',
+        }
+        return jsonify(response_object), 403
+    
+    if message.image == '':
+        response_object = {
+            'status': 'failure',
+            'description': 'Attachment not found',
+        }
+        return jsonify(response_object), 404
+
+
+    path_to_retrieve = os.path.join(os.getcwd(), 'mib', 'static', 'attachments', str(message.id), message.image)
+
+    data_img = None
+    try:
+        with open(path_to_retrieve, mode='rb') as image:
+            data_img = base64.encodebytes(image.read()).decode('utf-8')
+    except Exception:
+        response_object = {
+            'status': 'failure',
+            'description': 'Error while retrieve the image',
+        }
+        return jsonify(response_object), 500
+
+    response_object = {
+        'status': 'success',
+        'description' : 'Attachment retrieved',
+        'image': data_img,
+        'image_filename': message.image
+    }
+
+    return jsonify(response_object), 200
