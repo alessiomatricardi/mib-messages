@@ -11,4 +11,4 @@ from mib import create_app
 app = create_app()
 
 if __name__ == '__main__':
-    app.run(debug=True) #TODO ELIMINA PER CONSEGNA
+    app.run()
