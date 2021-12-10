@@ -11,6 +11,9 @@ COPY . /app
 # setting the workdir
 WORKDIR /app
 
+# set timezone to Europe/Rome
+ENV TZ=Europe/Rome
+
 # environmental variable used to understand if docker is running. 
 # If not, redis server and celery worker must be started locally.
 ENV DOCKER_IN_USE=yes

@@ -35,7 +35,7 @@ celery.conf.timezone = 'Europe/Rome' # set timezone to Rome
 celery.conf.beat_schedule = {
     'deliver_message_and_send_notification': {
         'task': 'deliver_message_and_send_notification',    # name of the task to execute
-        'schedule': 20.0 # crontab()                               # frequency of execution (every 1 min)
+        'schedule': crontab()                               # frequency of execution (every 1 min)
     },
 }
  
