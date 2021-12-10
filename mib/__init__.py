@@ -68,8 +68,7 @@ def create_app():
 
     # we need to populate the db
     with app.app_context():
-        if flask_env == 'testing':
-            db.create_all()
+        db.create_all()
 
     # create the directory 'static' if it doesn't exist
     if not os.path.exists(STATIC_DIR):
