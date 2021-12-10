@@ -18,5 +18,9 @@ ENV DOCKER_IN_USE=yes
 # installing all requirements
 RUN ["pip", "install", "-r", "requirements.prod.txt"]
 
+# install english language to censor contents
+
+RUN ["python3", "-m", "spacy", "download", "en"]
+
 # Main command
 CMD ["celery", "-A", "mib.background", "worker", "-l", "INFO", "-B"]
