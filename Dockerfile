@@ -11,7 +11,7 @@ COPY . /app
 # setting the workdir
 WORKDIR /app
 # set timezone to Europe/Rome
-ENV TZ=Europe/Rome
+#ENV TZ=UTC
 
 # installing all requirements
 RUN ["pip", "install", "-r", "requirements.prod.txt"]

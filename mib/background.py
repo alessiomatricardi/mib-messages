@@ -20,14 +20,13 @@ _APP = None
 if os.environ.get('DOCKER_IN_USE') is not None:
     BACKEND = BROKER = 'redis://redis_messages:6379'
 else:
-    BACKEND = BROKER = 'redis://localhost:6379'
+    BACKEND = BROKER = 'redis://localhost:6378'
 
 celery = Celery(__name__, backend=BACKEND, broker=BROKER) 
 
 
-celery.conf.timezone = 'Europe/Rome' # set timezone to Rome
+celery.conf.timezone = 'Europe/Rome' # set  to Rome
 
-#celery.conf.task_route = {"deliver_message_and_send_notification" : {"queue" : "message-queue"},}
 
 # 
 # 1st task: definition of a periodic task that checks if the lottery needs to be performed.
