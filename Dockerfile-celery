@@ -1,0 +1,29 @@
+#
+# Docker file for Celery in a Bottle v1.0
+#
+FROM python:3.8
+LABEL maintainer="4_squad"
+LABEL version="1.0"
+LABEL description="Celery worker"
+
+# creating the environment
+COPY . /app
+# setting the workdir
+WORKDIR /app
+
+# set timezone to Europe/Rome
+ENV TZ=Europe/Rome
+
+# environmental variable used to understand if docker is running. 
+# If not, redis server and celery worker must be started locally.
+ENV DOCKER_IN_USE=yes
+
+# installing all requirements
+RUN ["pip", "install", "-r", "requirements.prod.txt"]
+
+# install english language to censor contents
+
+RUN ["python3", "-m", "spacy", "download", "en"]
+
+# Main command
+CMD ["celery", "-A", "mib.background", "worker", "-l", "INFO", "-B"]

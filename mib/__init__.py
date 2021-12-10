@@ -9,6 +9,7 @@ import connexion
 from flask_environments import Environments
 from flask_sqlalchemy import SQLAlchemy
 import logging
+from config import ProdConfig
 
 db = None
 debug_toolbar = None
