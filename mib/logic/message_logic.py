@@ -68,8 +68,6 @@ class MessageLogic:
 
             send_email(email, email_message)
 
-        blacklist = []
-
         # check if the sender is in our blacklist, in order to don't permit to see his profile
         try:
             data = {'requester_id': message.sender_id}
@@ -84,12 +82,8 @@ class MessageLogic:
             # status OK, retrieve blacklist
             blocked = response.json()['blocked']
             blocking = response.json()['blocking']
-            for ob in blocked:
-                blacklist.append(ob)
-            for ob in blocking:
-                blacklist.append(ob)
 
-            is_sender_in_blacklist = message.sender_id in blacklist
+            is_sender_in_blacklist = message.sender_id in blocked or message.sender_id in blocking
 
         except (requests.exceptions.ConnectionError,requests.exceptions.Timeout):
             return None, 500
